@@ -230,9 +230,9 @@ on conflict (user_id, role) do nothing;
 - Scheduled delivery uses Supabase Cron calling `/api/cron/notifications` every minute; server-side times and quiet hours use `Africa/Lagos`.
 - Course-announcement targeting uses the explicitly selected cohort assumption: profile department and level match the course; this is not enrollment-based targeting.
 - `npm test` passed (125 tests), the focused notification tests passed (7 tests), and ESLint passed on changed Phase 6 source files.
-- `npm run typecheck` still reports two existing `revalidatePath` import errors in `src/app/actions/profile.ts` and `src/features/study-planner/actions.ts`; no Phase 6 type errors remained at the last run.
-- `npm run build`: Turbopack compiles successfully; the Next.js type-check step is blocked solely by the two pre-existing `revalidatePath` errors (not Phase 6). No Phase 6 build failures remain.
-- Build fix applied this session: `src/lib/notifications/push.ts` changed `import webPush from "web-push"` to `import * as webPush from "web-push"` because web-push v4 is ESM with named exports only (no default export). This was the sole Turbopack compile error.
+- `npm run typecheck` passes cleanly — the two pre-existing `revalidatePath` import errors were fixed this session (`next/navigation` → `next/cache`); no Phase 6 type errors.
+- `npm run build` passes — Turbopack compiles and Next.js type-check succeeds. All Phase 6 routes build.
+- Build fixes applied this session: `src/lib/notifications/push.ts` (`import * as webPush from "web-push"`), `src/app/actions/profile.ts` and `src/features/study-planner/actions.ts` (`import { revalidatePath } from "next/cache"`).
 - Migration 013 applied to remote Supabase project `keshrmnrobarrdkhyqjt` and confirmed via `supabase migration list` (remote `013 | 013`, all migrations in sync).
 - `.env.local` configured with VAPID keys and `CRON_SECRET`; `SUPABASE_SERVICE_ROLE_KEY` to be added from the dashboard.
 - Vault secrets (`notifications_app_url`, `notifications_cron_secret`), `pg_cron`/`pg_net` extensions, and one-time execution of `supabase/schedule_notifications.sql` remain dashboard-only and are not yet done.

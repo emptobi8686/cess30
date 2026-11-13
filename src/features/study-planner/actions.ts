@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {

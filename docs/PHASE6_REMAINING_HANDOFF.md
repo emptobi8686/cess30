@@ -13,14 +13,13 @@ Phase 6 is implemented locally but is **not ready to deploy**. Migration 013 has
 - `npm test`: **125 passed, 0 failed** (re-confirmed after the web-push fix below).
 - `npx tsx --test src/lib/__tests__/notifications.test.ts`: **7 passed, 0 failed**.
 - ESLint on changed Phase 6 source files: passed.
-- `npm run typecheck`: fails only on two **pre-existing** import errors, no Phase 6 type errors introduced:
-  - `src/app/actions/profile.ts`: imports `revalidatePath` from `next/navigation`.
-  - `src/features/study-planner/actions.ts`: imports `revalidatePath` from `next/navigation`.
-- `npm run build`: **Turbopack compiles successfully**, then fails the Next.js type-check step solely on the two pre-existing `revalidatePath` errors above (not Phase 6). Build is blocked until those are fixed or the task is extended to fix them.
+- `npm run typecheck`: **passes cleanly** — the two pre-existing `revalidatePath` import errors were fixed this session (`next/navigation` → `next/cache`); no Phase 6 type errors.
+- `npm run build`: **passes** — Turbopack compiles and Next.js type-check succeeds. All Phase 6 routes build (`/notifications`, `/settings/notifications`, `/api/cron/notifications`, `/api/push/subscriptions`, `/api/push/subscriptions/[id]`).
 
-### Build fix applied (this session)
+### Build fixes applied (this session)
 
-- `src/lib/notifications/push.ts:3`: changed `import webPush from "web-push"` to `import * as webPush from "web-push"`. web-push v4 is ESM with named exports only and has no default export, which was the sole Turbopack compile error (`./src/lib/notifications/push.ts:3:1 — Export default doesn't exist in target module`).
+- `src/lib/notifications/push.ts:3`: changed `import webPush from "web-push"` to `import * as webPush from "web-push"`. web-push v4 is ESM with named exports only and has no default export — this was the sole Turbopack compile error.
+- `src/app/actions/profile.ts:3` and `src/features/study-planner/actions.ts:3`: changed `import { revalidatePath } from "next/navigation"` to `import { revalidatePath } from "next/cache"`. `revalidatePath` is exported from `next/cache`, not `next/navigation` — these were the two typecheck errors blocking the production build.
 
 ### Code and SQL review findings (migration 013, delivery, claim/retry, preferences, push cleanup)
 
@@ -50,16 +49,15 @@ Course announcements intentionally target the department/level cohort matching t
 
 ## Next steps
 
-1. **Production build** — Turbopack compiles successfully; the build is blocked only by the two pre-existing `revalidatePath` type-check errors in `src/app/actions/profile.ts` and `src/features/study-planner/actions.ts`. These are not Phase 6 errors. Do not mask them; fix them separately or extend the task to fix them. No Phase 6 build failures remain.
+1. **Build/typecheck complete** — `npm run build` passes; `tsc --noEmit` passes; ESLint passed; `npm test` 125/125; notification tests 7/7. No Phase 6 failures remain.
 2. **Code and SQL review complete** — migration 013, the reminder/claim/retry flow, preference writes, and push-device cleanup reviewed; RLS test scenarios match the actual grants and constraints. See review findings above.
-3. **Lint/tests/typecheck complete** — ESLint passed, `npm test` 125/125, notification tests 7/7, `tsc --noEmit` shows only the two known pre-existing imports (no new Phase 6 errors).
-4. **Migration 013 applied to remote Supabase project `keshrmnrobarrdkhyqjt`** — confirmed via `supabase migration list` (all migrations `001`–`013` in sync, remote `013 | 013`). Approval was granted; normal `supabase db push` workflow used.
-5. **Production environment + VAPID configured locally** — `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and `CRON_SECRET` added to `.env.local`. `SUPABASE_SERVICE_ROLE_KEY` not set (obtain from Supabase Dashboard → Settings → API; never commit). Mirror `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `CRON_SECRET` to the production hosting environment.
+3. **Migration 013 applied to remote Supabase project `keshrmnrobarrdkhyqjt`** — confirmed via `supabase migration list` (all migrations `001`–`013` in sync, remote `013 | 013`).
+4. **Production environment + VAPID configured locally** — `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and `CRON_SECRET` added to `.env.local`. `SUPABASE_SERVICE_ROLE_KEY` not set (obtain from Supabase Dashboard → Settings → API; never commit). Mirror `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `CRON_SECRET` to the production hosting environment.
    - **Dashboard-only (Vault)**: add `notifications_app_url` = `https://<production-host>/api/cron/notifications` and `notifications_cron_secret` = the same value as `CRON_SECRET` via Supabase Dashboard → Integrations → Vault. No CLI Vault subcommand exists.
    - **Dashboard-only (extensions + scheduler)**: enable `pg_cron` and `pg_net` extensions via Dashboard → Database → Extensions, then run `supabase/schedule_notifications.sql` once in the SQL Editor to schedule `blueprint-notification-dispatch`. The cron endpoint must use the same `CRON_SECRET` as the deployment.
-6. With real student/admin test accounts, execute `supabase/tests/rls_scenarios.sql`; verify notification ownership, preference writes, announcement cohort targeting, device add/remove (including browser unsubscribe), reminder timing, quiet hours, push retry/expiration behavior, and admin stats.
-7. Test install/offline behavior and service-worker cache boundaries in a browser over HTTPS. No browser page was shared during the prior validation.
-8. Update this file and `AI_HANDOFF.md` with verified results and any deployment-only work still outstanding.
+5. With real student/admin test accounts, execute `supabase/tests/rls_scenarios.sql`; verify notification ownership, preference writes, announcement cohort targeting, device add/remove (including browser unsubscribe), reminder timing, quiet hours, push retry/expiration behavior, and admin stats.
+6. Test install/offline behavior and service-worker cache boundaries in a browser over HTTPS. No browser page was shared during the prior validation.
+7. Update this file and `AI_HANDOFF.md` with verified results and any deployment-only work still outstanding.
 
 ## Key files
 
