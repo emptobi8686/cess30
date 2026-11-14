@@ -18,11 +18,15 @@ export type VerificationStatus = "pending" | "verified" | "rejected" | "suspende
 export type Profile = {
   id: string;
   full_name: string;
+  nickname: string | null;
   matric_number: string | null;
   department: string;
   level: string;
   avatar_url: string | null;
   verification_status: VerificationStatus;
+  verification_reviewed_at: string | null;
+  verification_reviewed_by: string | null;
+  verification_rejection_reason: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -156,6 +160,69 @@ export type PushDevice = {
   device_label: string;
   created_at: string;
   last_used_at: string;
+};
+
+// ---------------------------------------------------------------------------
+// Quest types
+// ---------------------------------------------------------------------------
+
+export type QuestStatus = "pending" | "approved" | "rejected";
+
+export type Quest = {
+  id: string;
+  title: string;
+  description: string;
+  xp_reward: number;
+  due_date: string | null;
+  is_active: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QuestSubmission = {
+  id: string;
+  quest_id: string;
+  student_id: string;
+  evidence_url: string;
+  notes: string | null;
+  status: QuestStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QuestSubmissionWithQuest = QuestSubmission & {
+  quests: Pick<Quest, "id" | "title" | "xp_reward">;
+};
+
+export type XpLedgerEntry = {
+  id: string;
+  user_id: string;
+  quest_id: string | null;
+  xp_amount: number;
+  reason: string;
+  created_at: string;
+};
+
+export type XpSummary = {
+  user_id: string;
+  full_name: string;
+  total_xp: number;
+  quests_completed: number;
+};
+
+export type LeaderboardPeriod = "all-time" | "weekly" | "monthly";
+
+export type LeaderboardEntry = {
+  user_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  total_xp: number;
+  quests_completed: number;
+  rank: number;
 };
 
 // ---------------------------------------------------------------------------

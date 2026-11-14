@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -14,6 +14,8 @@ import {
   AlertCircle,
   CalendarDays,
   CalendarRange,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,15 +36,26 @@ import type {
   StudySessionWithCourse,
   LectureSessionWithCourse,
 } from "@/types";
+import {
+  toggleStudySessionCompleted,
+  deleteStudySession,
+} from "@/features/study-planner/actions";
 
 type ViewMode = "daily" | "weekly" | "monthly" | "status";
 type StatusFilter = "all" | "upcoming" | "completed" | "overdue";
+
+type Notification = {
+  id: string;
+  type: "success" | "error";
+  title: string;
+  message?: string;
+};
 
 type Props = {
   courses: Course[];
   initialStudySessions: StudySessionWithCourse[];
   initialLectures: LectureSessionWithCourse[];
-  todayDate: string; // Lagos "YYYY-MM-DD"
+  todayDate: string;
 };
 
 export function StudyPlannerContainer({
@@ -55,6 +68,9 @@ export function StudyPlannerContainer({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedDate, setSelectedDate] = useState<string>(todayDate);
   const [currentWeekOffset, setCurrentWeekOffset] = useState<number>(0);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const notificationIdRef = useRef(0);
 
   // Dialog management
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -64,6 +80,18 @@ export function StudyPlannerContainer({
 
   // Compute week dates for weekly view
   const weekInfo = getWeekDatesForDate(todayDate, currentWeekOffset);
+
+  function addNotification(type: Notification["type"], title: string, message?: string) {
+    const id = `n-${notificationIdRef.current += 1}`;
+    setNotifications((prev) => [...prev, { id, type, title, message }]);
+    setTimeout(() => {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    }, 5000);
+  }
+
+  function removeNotification(id: string) {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }
 
   // Handlers
   function handlePrevDay() {
@@ -75,6 +103,41 @@ export function StudyPlannerContainer({
   function handleToday() {
     setSelectedDate(todayDate);
     setCurrentWeekOffset(0);
+  }
+
+  async function handleToggleComplete(session: StudySessionWithCourse) {
+    setActionLoading(session.id);
+    try {
+      const result = await toggleStudySessionCompleted(session.id, !session.completed);
+      if (result.ok) {
+        addNotification(
+          "success",
+          session.completed ? "Session marked as planned" : "Session marked as completed"
+        );
+      } else {
+        addNotification("error", "Failed to update session", result.error);
+      }
+    } catch {
+      addNotification("error", "An unexpected error occurred.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleDelete(session: StudySessionWithCourse, deleteEntireSeries: boolean) {
+    setActionLoading(session.id);
+    try {
+      const result = await deleteStudySession(session.id, deleteEntireSeries);
+      if (result.ok) {
+        addNotification("success", "Study session deleted");
+      } else {
+        addNotification("error", "Failed to delete session", result.error);
+      }
+    } catch {
+      addNotification("error", "An unexpected error occurred.");
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   // Filter study sessions for daily view
@@ -104,6 +167,41 @@ export function StudyPlannerContainer({
 
   return (
     <div className="space-y-6">
+      {notifications.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+          {notifications.map((n) => (
+            <div
+              key={n.id}
+              className={cn(
+                "pointer-events-auto flex items-start gap-3 rounded-lg border p-4 text-sm shadow-lg",
+                n.type === "success"
+                  ? "border-green-200 bg-green-50 text-green-900"
+                  : "border-red-200 bg-red-50 text-red-900"
+              )}
+            >
+              <div className="shrink-0 mt-0.5">
+                {n.type === "success" ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold">{n.title}</p>
+                {n.message && <p className="text-xs text-opacity-70">{n.message}</p>}
+              </div>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="outline"
+                onClick={() => removeNotification(n.id)}
+                className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Top action bar: View mode switcher & Plan button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         {/* View Switcher */}
@@ -205,7 +303,9 @@ export function StudyPlannerContainer({
                 })}
               </p>
               {selectedDate === todayDate ? (
-                <span className="text-[11px] font-medium text-primary">Today (Africa/Lagos)</span>
+                <span className="text-[11px] font-medium text-primary">
+                  Today (Africa/Lagos)
+                </span>
               ) : null}
             </div>
 
@@ -257,9 +357,13 @@ export function StudyPlannerContainer({
                     <StudySessionCard
                       key={session.id}
                       session={session}
+                      isLoading={actionLoading === session.id}
+                      onToggleComplete={() => handleToggleComplete(session)}
                       onEdit={setEditingSession}
                       onReschedule={setReschedulingSession}
-                      onDelete={setDeletingSession}
+                      onDelete={(deleteEntireSeries) =>
+                        handleDelete(session, deleteEntireSeries)
+                      }
                     />
                   ))}
                 </div>
@@ -403,6 +507,9 @@ export function StudyPlannerContainer({
                         <span className="text-[10px] text-muted-foreground font-mono">
                           {session.start_time.slice(0, 5)} - {session.end_time.slice(0, 5)}
                         </span>
+                        {session.completed ? (
+                          <Check className="h-3 w-3 text-primary mt-0.5" />
+                        ) : null}
                       </div>
                     ))}
 
@@ -443,8 +550,12 @@ export function StudyPlannerContainer({
                 .sort()
                 .slice(0, 28)
                 .map((dateStr) => {
-                  const studyCount = initialStudySessions.filter((s) => s.study_date === dateStr).length;
-                  const lecCount = initialLectures.filter((l) => l.lecture_date === dateStr).length;
+                  const studyCount = initialStudySessions.filter(
+                    (s) => s.study_date === dateStr
+                  ).length;
+                  const lecCount = initialLectures.filter(
+                    (l) => l.lecture_date === dateStr
+                  ).length;
                   const isToday = dateStr === todayDate;
 
                   return (
@@ -462,7 +573,11 @@ export function StudyPlannerContainer({
                       }`}
                     >
                       <span className="text-xs font-semibold">
-                        {formatDisplayDate(dateStr, { weekday: "short", day: "numeric", month: "short" })}
+                        {formatDisplayDate(dateStr, {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}
                       </span>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {studyCount > 0 ? (
@@ -551,9 +666,13 @@ export function StudyPlannerContainer({
                   </span>
                   <StudySessionCard
                     session={session}
+                    isLoading={actionLoading === session.id}
+                    onToggleComplete={() => handleToggleComplete(session)}
                     onEdit={setEditingSession}
                     onReschedule={setReschedulingSession}
-                    onDelete={setDeletingSession}
+                    onDelete={(deleteEntireSeries) =>
+                      handleDelete(session, deleteEntireSeries)
+                    }
                   />
                 </div>
               ))}
@@ -598,3 +717,6 @@ export function StudyPlannerContainer({
   );
 }
 
+function cn(...classes: (string | undefined | null | boolean)[]) {
+  return classes.filter(Boolean).join(" ");
+}

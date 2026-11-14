@@ -1,12 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import {
   BookOpen,
-  Calendar,
-  CheckCircle2,
   Circle,
-  Clock,
+  CheckCircle2,
   MapPin,
   MoreVertical,
   Repeat,
@@ -14,6 +11,8 @@ import {
   Edit2,
   CalendarClock,
   Trash2,
+  Loader2,
+  Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,16 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toggleStudySessionCompleted } from "@/features/study-planner/actions";
 import { formatTime } from "@/lib/dates";
 import type { StudySessionWithCourse } from "@/types";
-
-type Props = {
-  session: StudySessionWithCourse;
-  onEdit: (session: StudySessionWithCourse) => void;
-  onReschedule: (session: StudySessionWithCourse) => void;
-  onDelete: (session: StudySessionWithCourse) => void;
-};
 
 const REMINDER_LABELS: Record<string, string> = {
   none: "No reminder",
@@ -42,32 +33,27 @@ const REMINDER_LABELS: Record<string, string> = {
   "1_day": "1d reminder",
 };
 
-export function StudySessionCard({ session, onEdit, onReschedule, onDelete }: Props) {
-  const [isCompleted, setIsCompleted] = useState(session.completed);
-  const [isToggling, setIsToggling] = useState(false);
+type Props = {
+  session: StudySessionWithCourse;
+  isLoading?: boolean;
+  onToggleComplete: () => void;
+  onEdit: (session: StudySessionWithCourse) => void;
+  onReschedule: (session: StudySessionWithCourse) => void;
+  onDelete: (deleteEntireSeries: boolean) => void;
+};
 
-  async function handleToggleCompleted() {
-    if (isToggling) return;
-    const nextState = !isCompleted;
-    setIsCompleted(nextState);
-    setIsToggling(true);
-
-    try {
-      const res = await toggleStudySessionCompleted(session.id, nextState);
-      if (!res.ok) {
-        setIsCompleted(!nextState); // Rollback
-      }
-    } catch {
-      setIsCompleted(!nextState); // Rollback
-    } finally {
-      setIsToggling(false);
-    }
-  }
-
+export function StudySessionCard({
+  session,
+  isLoading = false,
+  onToggleComplete,
+  onEdit,
+  onReschedule,
+  onDelete,
+}: Props) {
   return (
     <div
       className={`group relative rounded-xl border p-4 transition-all ${
-        isCompleted
+        session.completed
           ? "border-border/60 bg-muted/20 opacity-80"
           : "border-primary/30 bg-card shadow-xs hover:border-primary/60 hover:shadow-sm"
       }`}
@@ -77,12 +63,14 @@ export function StudySessionCard({ session, onEdit, onReschedule, onDelete }: Pr
         <div className="flex items-start gap-3 min-w-0">
           <button
             type="button"
-            onClick={handleToggleCompleted}
-            disabled={isToggling}
-            aria-label={isCompleted ? "Mark incomplete" : "Mark completed"}
+            onClick={onToggleComplete}
+            disabled={isLoading}
+            aria-label={session.completed ? "Mark incomplete" : "Mark completed"}
             className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
           >
-            {isCompleted ? (
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : session.completed ? (
               <CheckCircle2 className="h-5 w-5 text-primary" />
             ) : (
               <Circle className="h-5 w-5 text-muted-foreground hover:text-foreground" />
@@ -114,7 +102,7 @@ export function StudySessionCard({ session, onEdit, onReschedule, onDelete }: Pr
                 </Badge>
               ) : null}
 
-              {isCompleted ? (
+              {session.completed ? (
                 <Badge variant="outline" className="text-[10px] h-5 border-primary/30 text-primary">
                   Completed
                 </Badge>
@@ -124,7 +112,7 @@ export function StudySessionCard({ session, onEdit, onReschedule, onDelete }: Pr
             {/* Title / Goal */}
             <h3
               className={`text-sm font-semibold text-foreground leading-snug break-words ${
-                isCompleted ? "line-through text-muted-foreground" : ""
+                session.completed ? "line-through text-muted-foreground" : ""
               }`}
             >
               {session.title}
@@ -192,16 +180,24 @@ export function StudySessionCard({ session, onEdit, onReschedule, onDelete }: Pr
               Reschedule
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => onDelete(session)}
+              onClick={() => onDelete(false)}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-3.5 w-3.5" />
               Delete session
             </DropdownMenuItem>
+            {session.recurrence_id && (
+              <DropdownMenuItem
+                onClick={() => onDelete(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                Delete entire series
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </div>
   );
 }
-

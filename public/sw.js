@@ -45,11 +45,18 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  if (request.method !== "GET" || url.origin !== self.origin) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(async () => {
+      fetch(request).catch((error) => {
+        // Aborted requests (e.g. navigation cancelled) must not be reported
+        // to the user as "offline". Only genuine network failures surface the
+        // offline fallback; authentication and server errors are handled by the
+        // application (redirects to /login, server error pages) instead.
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return Response.error();
+        }
         const cache = await caches.open(CACHE_NAME);
         return (await cache.match(OFFLINE_URL)) || Response.error();
       })
@@ -112,5 +119,5 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const path = getSafeTarget(event.notification.data?.target);
-  event.waitUntil(self.clients.openWindow(new URL(path, self.location.origin).href));
+  event.waitUntil(    self.clients.openWindow(new URL(path, self.origin).href));
 });

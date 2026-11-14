@@ -38,7 +38,8 @@ npm run build
 - `/announcements` — published announcements
 - `/notifications` — in-app notification centre
 - `/settings/notifications` — notification preferences and registered push devices
-- `/quests`, `/leaderboard` — empty states (future phases)
+- `/quests` — browse active academic quests, submit evidence links, track submission status and XP earned
+- `/leaderboard` — XP leaderboard (full rankings for admins, personal progress for students)
 - `/settings` — account settings and PWA installation
 - `/access-denied`
 
@@ -47,11 +48,14 @@ npm run build
 - `/admin/timetable` — create, edit, cancel/restore, delete sessions
 - `/admin/announcements` — create (draft/publish), edit, publish/unpublish, delete
 - `/admin/courses` — read-only course catalogue view
+- `/admin/verifications` — review student matriculation submissions (approve/reject)
+- `/admin/quests` — manage quests (create/edit), review quest submissions (approve/reject with XP awards)
 
 ## Supabase status
 
 - `.env.local` has `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` configured. Phase 6 VAPID keys (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`), `VAPID_SUBJECT`, and `CRON_SECRET` were added to `.env.local` this session. `SUPABASE_SERVICE_ROLE_KEY` is not set locally — obtain from Supabase Dashboard → Settings → API; never commit.
 - Migrations 001–013 are recorded as applied remotely. Migration 013 was applied via `supabase db push` and confirmed via `supabase migration list` (remote `013 | 013`, all in sync).
+- Migrations 014–018 are local only (not deployed to remote Supabase).
 - Live RLS testing with separate student/admin identities not yet completed.
 - Live password-recovery email delivery is not yet verified (requires a real inbox and configured Supabase email template).
 - Google OAuth provider setup instructions documented in `docs/GOOGLE_AUTH_SETUP.md`.
@@ -81,6 +85,11 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 | 011 | `011_phase5_study_planner.sql` | Phase 5: `study_sessions` schema additions (`location`, `reminder_preference`, `completed_at`, `recurrence_id`, `recurrence_pattern`, `recurrence_end_date`), composite indexes, and explicit split RLS policies | ✅ |
 | 012 | `012_study_session_completed_at.sql` | Adds `completed_at` to `study_sessions` | ✅ |
 | 013 | `013_notifications.sql` | Notification inbox, user preferences, push subscriptions, delivery queue/claim function, and RLS | ✅ |
+| 014 | `014_profile_enhancements.sql` | `nickname` column on profiles; re-grants INSERT/UPDATE/DELETE on profiles to authenticated (RLS enforces restrictions); `profile-pictures` Storage bucket with RLS policies; reaffirms `profiles_update_own` policy | ⬜ local only |
+| 015 | `015_matric_verification_workflow.sql` | `verification_reviewed_at`, `verification_reviewed_by`, `verification_rejection_reason` columns on `profiles`; `profile_verification_history` table; `record_profile_verification_decision()` RPC; admin RLS policies on profiles and history | ⬜ local only |
+| 016 | `016_verification_security_hardening.sql` | Extended `prevent_profile_identity_changes()` to protect all four verification metadata fields; atomic `verify_profile_decision()` RPC with `FOR UPDATE` row lock, admin verification via `is_admin()`, self-review rejection, rejection-reason validation; revoked direct INSERT on `profile_verification_history` from authenticated; revoked old `record_profile_verification_decision()` from authenticated | ⬜ local only |
+| 017 | `017_remove_broad_admin_profile_update.sql` | Drops `profiles_update_verification_admin` policy from `public.profiles` — removes admin bypass path that allowed direct profile updates without audit history or row locking. Preserves `profiles_select_admin`, `profiles_update_own`, trigger, and RPC. | ⬜ local only |
+| 018 | `018_quests_and_xp.sql` | Quests and XP ledger: `quests`, `quest_submissions`, `xp_ledger` tables; RLS policies (student read active quests/own submissions/own XP, admin all); `award_xp()` and `review_quest_submission()` SECURITY DEFINER RPCs for secure XP awards and submission review | ⬜ local only |
 
 Seed: `supabase/seed/001_civil_engineering_courses.sql` — applied.
 
@@ -97,6 +106,9 @@ Seed: `supabase/seed/001_civil_engineering_courses.sql` — applied.
 | `notifications` | Per-user in-app inbox with optional push-delivery state and deduplication key (Phase 6; migration 013 pending). |
 | `notification_preferences` | Per-user notification channels, reminder lead times, and quiet hours (Phase 6; migration 013 pending). |
 | `push_subscriptions` | Private Web Push endpoints and keys; accessible only to the server service role (Phase 6; migration 013 pending). |
+| `quests` | Verified academic quest definitions (title, description, XP reward, due date, active flag). Admin-managed; students read active quests only. (Migration 018; local only) |
+| `quest_submissions` | Student evidence submissions linked to quests. Status: pending/approved/rejected. Student owns own submissions; admin reviews all. (Migration 018; local only) |
+| `xp_ledger` | Append-only XP awards. Writes only via `award_xp()` RPC (admin only). Students read own XP; admins read all. (Migration 018; local only) |
 
 ## RLS summary
 
@@ -111,6 +123,7 @@ Seed: `supabase/seed/001_civil_engineering_courses.sql` — applied.
 - A partial unique index blocks duplicate active lecture slots while allowing duplicates once a slot is cancelled (migration 009).
 - Admin routes double-guarded: middleware checks `user_roles` table; admin layout calls `requireUserSession` + `getCurrentUserRole`.
 - Notification rows are user-owned; push subscription rows are not exposed to authenticated clients. Privileged delivery uses a server-only Supabase service-role client.
+- Quests: students read active quests (`is_active = true`), submit own evidence (one per student per quest), read own submissions and XP. Admins manage all quests, review all submissions, award XP via `award_xp()` and `review_quest_submission()` RPCs (SECURITY DEFINER, row-level locking). Direct writes to `xp_ledger` are revoked from `authenticated`.
 
 ## Timezone policy
 
@@ -142,11 +155,15 @@ src/
 │   │   └── update/page.tsx      — client "set new password" page (recovery session)
 │   ├── admin/
 │   │   ├── layout.tsx           — admin role guard (requireUserSession + role check)
-│   │   ├── page.tsx             — admin overview
+│   │   ├── page.tsx             — admin overview (includes quest & verification stats)
 │   │   ├── timetable/page.tsx   — session management
 │   │   ├── announcements/page.tsx — announcement management
-│   │   └── courses/page.tsx     — course catalogue (read-only)
+│   │   ├── courses/page.tsx     — course catalogue (read-only)
+│   │   ├── verifications/page.tsx — matriculation review queue
+│   │   └── quests/page.tsx      — quest management + submission review (approve/reject with XP)
 │   ├── dashboard/page.tsx       — student dashboard with weekly study summary & today's study plan
+│   ├── leaderboard/page.tsx     — XP leaderboard (full rankings for admins, personal progress for students)
+│   ├── quests/page.tsx          — browse active quests, submit evidence, track status & XP
 │   ├── timetable/page.tsx       — student timetable (week nav, agenda/week views)
 │   ├── study-planner/page.tsx   — student personal study timetable
 │   └── announcements/page.tsx  — student announcements
@@ -173,6 +190,7 @@ src/
 │   │   └── actions.ts           — server actions (create, update, delete, complete, reschedule)
 │   ├── timetable/               — official timetable features
 │   ├── announcements/           — announcement features
+│   ├── quests/                  — quests & XP: queries.ts, actions.ts, __tests__/validation.test.ts
 │   └── notifications/           — inbox actions, preference management, delivery stats
 ├── lib/
 │   ├── auth.ts                  — signInWithEmail, signInWithGoogle, signUpWithEmail, resetPassword
@@ -194,7 +212,8 @@ src/
 └── types/index.ts               — Profile with VerificationStatus, StudySessionWithCourse, DB row types
 docs/
 ├── GOOGLE_AUTH_SETUP.md         — manual Google Cloud & Supabase configuration steps
-└── NOTIFICATIONS_SETUP.md       — VAPID, Supabase Cron/Vault, deployment, and verification
+├── NOTIFICATIONS_SETUP.md       — VAPID, Supabase Cron/Vault, deployment, and verification
+└── PHASE_7_5_DEPLOYMENT_GUIDE.md — deployment guide for migrations 014–017
 middleware.ts                    — session guard + admin role guard for /admin/*
 supabase/migrations/             — 001–013
 supabase/schedule_notifications.sql — one-time Vault-backed Supabase Cron setup
@@ -224,29 +243,141 @@ on conflict (user_id, role) do nothing;
 - Automated unit test suite in `src/lib/__tests__/phase5-study-planner.test.ts`
 - Migrations 001–012 recorded as applied remotely; migration 013 is local only
 
-## Phase 6 status
+## Phase 7 (in progress) — Profile & Matriculation Verification
 
-- Implemented locally: notification inbox, per-user preferences and device management, announcement notifications, lecture/study reminders, Web Push delivery, a service worker, offline page, manifest, and install UI.
-- Scheduled delivery uses Supabase Cron calling `/api/cron/notifications` every minute; server-side times and quiet hours use `Africa/Lagos`.
-- Course-announcement targeting uses the explicitly selected cohort assumption: profile department and level match the course; this is not enrollment-based targeting.
-- `npm test` passed (125 tests), the focused notification tests passed (7 tests), and ESLint passed on changed Phase 6 source files.
-- `npm run typecheck` passes cleanly — the two pre-existing `revalidatePath` import errors were fixed this session (`next/navigation` → `next/cache`); no Phase 6 type errors.
-- `npm run build` passes — Turbopack compiles and Next.js type-check succeeds. All Phase 6 routes build.
-- Build fixes applied this session: `src/lib/notifications/push.ts` (`import * as webPush from "web-push"`), `src/app/actions/profile.ts` and `src/features/study-planner/actions.ts` (`import { revalidatePath } from "next/cache"`).
-- Migration 013 applied to remote Supabase project `keshrmnrobarrdkhyqjt` and confirmed via `supabase migration list` (remote `013 | 013`, all migrations in sync).
-- `.env.local` configured with VAPID keys and `CRON_SECRET`; `SUPABASE_SERVICE_ROLE_KEY` to be added from the dashboard.
-- Vault secrets (`notifications_app_url`, `notifications_cron_secret`), `pg_cron`/`pg_net` extensions, and one-time execution of `supabase/schedule_notifications.sql` remain dashboard-only and are not yet done.
-- Live push/RLS verification is pending.
-- Continue from `docs/PHASE6_REMAINING_HANDOFF.md`; setup details are in `docs/NOTIFICATIONS_SETUP.md`.
+### Completed this session
 
-## Outstanding (requires manual action)
+**Migration 014** (`supabase/migrations/014_profile_enhancements.sql`):
+- Added `nickname` column to `public.profiles`
+- Re-granted INSERT/UPDATE/DELETE on `public.profiles` to `authenticated` (fixes "permission denied for table profiles" — migration 010 had revoked writes; RLS `profiles_update_own` policy enforces restrictions)
+- Created `profile-pictures` Storage bucket (5 MB limit, image MIME types only) with insert/select/update/delete RLS policies scoped to `auth.uid()` owning the object path
+- Reaffirmed `profiles_select_own`, `profiles_insert_own`, `profiles_update_own` RLS policies
 
-1. **Apply migration 013** — only after reviewing it and obtaining explicit approval to change the live Supabase project
-2. **Configure Web Push and Supabase Cron** — follow `docs/NOTIFICATIONS_SETUP.md`
-3. **Live RLS/push verification** — run the documented scenarios with real student/admin identities and browser push credentials
-4. **Configure Google OAuth** — follow `docs/GOOGLE_AUTH_SETUP.md` in Google Cloud Console and Supabase Dashboard
-5. **Quests / Leaderboard** — Phase 7
-6. **Admin Dashboard expansion** — Phase 8
+**Migration 015** (`supabase/migrations/015_matric_verification_workflow.sql`):
+- Added `verification_reviewed_at`, `verification_reviewed_by`, `verification_rejection_reason` columns to `public.profiles`
+- Created `public.profile_verification_history` table with audit trail
+- Created `public.record_profile_verification_decision()` RPC (non-atomic, accepts caller-supplied reviewer ID)
+- Added RLS policies for profiles (admin select/update) and profile_verification_history (own/admin select, admin insert)
+
+**Migration 016** (`supabase/migrations/016_verification_security_hardening.sql`):
+- Extended `prevent_profile_identity_changes()` to protect all four verification metadata fields from student modification: `verification_status`, `verification_reviewed_at`, `verification_reviewed_by`, `verification_rejection_reason`
+- Created `public.verify_profile_decision(p_profile_id, p_new_status, p_rejection_reason)` — atomic SECURITY DEFINER RPC that:
+  - Verifies admin via `public.is_admin()`
+  - Rejects self-review (`p_profile_id = auth.uid()`)
+  - Locks target profile row with `FOR UPDATE` to prevent concurrent conflicting decisions
+  - Validates current verification status and requested decision
+  - Requires non-empty rejection reason (min 12 chars) for rejection
+  - Updates profile verification fields and inserts history record in the same transaction
+  - Runs with `set search_path = pg_catalog, public`, fully qualified table references
+  - Revoked from `public`/`anon`; granted only to `authenticated`
+- Revoked execute on `record_profile_verification_decision()` from `authenticated`
+- Dropped direct `profile_verification_history_insert_admin` policy — all history inserts go through the RPC
+- Reaffirmed `is_admin()` execute grant for `authenticated`
+
+**Migration 017** (`supabase/migrations/017_remove_broad_admin_profile_update.sql`):
+- Drops `profiles_update_verification_admin` policy from `public.profiles`
+- Removes admin bypass path that allowed direct profile updates without audit history or row locking
+- Preserves `profiles_select_admin` (admin read for verification queue)
+- Preserves `profiles_update_own` (student self-update)
+- Preserves `prevent_profile_identity_changes()` trigger and `verify_profile_decision()` RPC
+
+**Profile settings page** (`src/app/settings/profile/page.tsx` + `_components/profile-settings-client.tsx`):
+- Server action `getProfile()` fetches profile without importing server Supabase client into client component boundary
+- Upload/replace profile picture (validates MIME type, 5 MB limit, Supabase Storage, display progress)
+- Delete profile picture
+- Update nickname (max 100 chars)
+- Submit matriculation number (existing `submitMatricNumber` action)
+- View verification status with color-coded badge
+- Read-only fields for name, department, level, matric number (protected by trigger)
+
+**Dashboard shell** (`src/components/shared/dashboard-shell.tsx`):
+- Profile dropdown now shows actual avatar (or initials fallback)
+- Settings link now points to `/settings/profile`
+
+**Settings index** (`src/app/settings/page.tsx`):
+- Added "Profile & settings" card alongside notifications and PWA
+
+**Dashboard** (`src/app/dashboard/page.tsx`):
+- Passes `avatarUrl` and nickname-based `displayName` to `DashboardShell`
+
+**Verification server actions** (`src/features/verification/actions.ts`):
+- `applyVerificationDecision()` now calls the atomic `verify_profile_decision()` RPC instead of separate profile UPDATE + history INSERT
+- Server-side admin authorization remains (`requireAdminSession`)
+- Database independently verifies admin authorization inside the RPC
+- Self-review rejected by the RPC
+- Rejection reasons validated before RPC call
+- Duplicate/conflicting decisions return understandable RPC errors
+- Notifications created only after successful committed review; notification failure does not fail the review
+
+**Fixes applied to unblock production build:**
+- `src/lib/notifications/push.ts` — `import * as webPush from "web-push"`
+- `src/app/actions/profile.ts` — `import { revalidatePath } from "next/cache"`
+- `src/features/study-planner/actions.ts` — `import { revalidatePath } from "next/cache"`
+- `public/sw.js` — `self.location.origin` → `self.origin`; `AbortError` handling in navigation catch
+
+**Study planner** (`src/components/shared/study-planner/study-planner-container.tsx`, `study-session-card.tsx`):
+- Inline success/error notifications for toggle complete, delete, and other study session actions
+- Loading state during toggle complete action (Loader2 spinner on the completion button)
+- Delete entire series option added to dropdown menu
+- Completion checkmark icon shown on weekly view cards for completed sessions
+- Toast-style notification area (top-right, auto-dismiss after 5s)
+
+**Performance (Phase 5):**
+- `src/app/dashboard/loading.tsx` — Suspense loading state for dashboard
+- `src/app/dashboard/error.tsx` — Error boundary for dashboard
+- `src/app/study-planner/loading.tsx` — Suspense loading state for study planner
+- `src/app/study-planner/error.tsx` — Error boundary for study planner
+- `src/app/settings/error.tsx` — Error boundary for settings
+- Replaced `` with `next/image` in dashboard-shell.tsx (avatar, priority) and profile-settings-client.tsx (profile picture, priority)
+
+### Verification (this session)
+- `npm run typecheck` — passes (exit 0)
+- `npm test` — 159 passed, 0 failed (44 suites, including 10 new quest validation tests)
+- `npm run lint` — 0 errors (only pre-existing warnings in untouched files)
+- `npm run build` — passes (Turbopack + type-check)
+
+### Phase 8 — Quests, Leaderboard, Admin Dashboard Improvements
+
+**Migration 018** (`supabase/migrations/018_quests_and_xp.sql`):
+- `public.quests` — quest definitions (title, description, XP reward, due date, active flag, created_by)
+- `public.quest_submissions` — student evidence submissions (quest_id, student_id, evidence_url, status, reviewed_by, rejection_reason); one submission per student per quest
+- `public.xp_ledger` — append-only XP awards (user_id, quest_id, xp_amount, reason); direct writes revoked
+- RLS: students read active quests/own submissions/own XP; admins manage all
+- `award_xp()` RPC — SECURITY DEFINER, admin-only XP awards with input validation
+- `review_quest_submission()` RPC — atomic submission review + XP award with row-level locking
+
+**Quests page** (`src/app/quests/page.tsx`):
+- Browse active quests with XP reward and due date
+- Submit evidence URL via Dialog form (one submission per student per quest)
+- View submission status (pending/approved/rejected) and rejection reasons
+- XP and quests-completed summary cards
+
+**Leaderboard page** (`src/app/leaderboard/page.tsx`):
+- Admins: full XP leaderboard table with rankings
+- Students: personal XP and quests completed summary
+
+**Admin quests page** (`src/app/admin/quests/page.tsx`):
+- Create new quests (title, description, XP reward, due date, active toggle)
+- Edit existing quests
+- Review pending submissions: approve (awards XP via RPC) or reject (requires 12+ char reason)
+- Filter submissions by status (all/pending/approved/rejected)
+
+**Admin overview** (`src/app/admin/page.tsx`):
+- Added stat cards: pending verifications, active quests, pending submissions
+- Added "Quests" quick link card
+- Added "Quests" nav item to AdminShell sidebar
+
+**Tests** (`src/features/quests/__tests__/validation.test.ts`):
+- Quest creation input validation (title length, description length, XP range, due date format)
+- Quest submission input validation (quest ID format, evidence URL, notes length)
+
+### Outstanding
+- Live browser verification of service worker fix (no browser environment available)
+- Migrations 014, 015, 016, 017, 018 not yet applied to remote Supabase (requires explicit user approval per security guardrail; see `docs/PHASE_7_5_DEPLOYMENT_GUIDE.md`)
+- Vault secrets, pg_cron/pg_net extensions, `supabase/schedule_notifications.sql` still pending
+- Live push/RLS verification pending
+- Database integration tests not executed against PostgreSQL (no local instance); real JWT auth and concurrency tests pending
+
 
 ## Security guardrails
 

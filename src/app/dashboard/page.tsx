@@ -48,11 +48,12 @@ export default async function DashboardPage() {
   // Fetch student profile including matriculation and verification status
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, matric_number, verification_status")
+    .select("full_name, nickname, matric_number, avatar_url, verification_status")
     .eq("id", user.id)
     .maybeSingle();
 
-  const displayName = profile?.full_name ?? undefined;
+  const displayName = (profile?.nickname || profile?.full_name) ?? undefined;
+  const avatarUrl = profile?.avatar_url ?? null;
   const matricNumber = profile?.matric_number ?? null;
   const verificationStatus = (profile?.verification_status as VerificationStatus) ?? "pending";
 
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
   const firstName = displayName?.split(" ")[0];
 
   return (
-    <DashboardShell currentLabel="Overview" displayName={displayName}>
+    <DashboardShell currentLabel="Overview" displayName={displayName} avatarUrl={avatarUrl}>
       <div className="space-y-6">
         <PageHeader
           eyebrow="Student overview"

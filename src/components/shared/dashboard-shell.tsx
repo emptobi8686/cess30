@@ -134,7 +134,13 @@ function MobileNav({ currentLabel }: { currentLabel: string }) {
   );
 }
 
-function ProfileMenu({ displayName }: { displayName?: string }) {
+function ProfileMenu({
+  displayName,
+  avatarUrl,
+}: {
+  displayName?: string;
+  avatarUrl?: string | null;
+}) {
   const [isPending, startTransition] = useTransition();
 
   function handleSignOut() {
@@ -147,9 +153,20 @@ function ProfileMenu({ displayName }: { displayName?: string }) {
     <DropdownMenu>
       <DropdownMenuTrigger>
         <Button type="button" variant="ghost" className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <UserRound className="h-4 w-4" />
-          </div>
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt="Profile"
+              className="h-8 w-8 rounded-full object-cover border border-border/60"
+              width={32}
+              height={32}
+              priority
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <UserRound className="h-4 w-4" />
+            </div>
+          )}
           <div className="hidden text-left sm:block">
             <p className="text-sm font-medium text-foreground">{displayName ?? "Student"}</p>
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Pilot</p>
@@ -159,9 +176,8 @@ function ProfileMenu({ displayName }: { displayName?: string }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
         <DropdownMenuLabel>Account</DropdownMenuLabel>
-        {/* Settings link rendered as a full-width anchor inside the menu item */}
         <DropdownMenuItem className="gap-2 p-0">
-          <Link href="/settings" className="flex w-full items-center gap-2 px-1.5 py-1">
+          <Link href="/settings/profile" className="flex w-full items-center gap-2 px-1.5 py-1">
             <UserRound className="h-4 w-4" />
             Profile &amp; settings
           </Link>
@@ -185,10 +201,12 @@ export function DashboardShell({
   children,
   currentLabel,
   displayName,
+  avatarUrl,
 }: {
   children: React.ReactNode;
   currentLabel: string;
   displayName?: string;
+  avatarUrl?: string | null;
 }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -208,7 +226,7 @@ export function DashboardShell({
 
               <div className="flex items-center gap-2 sm:gap-3">
                 <NotificationsMenu />
-                <ProfileMenu displayName={displayName} />
+                <ProfileMenu displayName={displayName} avatarUrl={avatarUrl} />
               </div>
             </div>
           </header>

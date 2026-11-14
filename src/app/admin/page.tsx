@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { BookOpen, CalendarDays, Megaphone } from "lucide-react";
+import { BookOpen, CalendarDays, Megaphone, ShieldCheck, Trophy } from "lucide-react";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getNotificationDeliveryStats } from "@/features/notifications/queries";
+import { getPendingQuestSubmissionsCount, getActiveQuestsCountAdmin } from "@/features/quests/queries";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { formatTimestamp } from "@/lib/dates";
@@ -25,6 +26,16 @@ export default async function AdminOverviewPage() {
 
   const displayName = profile?.full_name ?? undefined;
   const notificationStats = await getNotificationDeliveryStats();
+
+  // Quest and verification stats
+  const [pendingVerifications, activeQuests, pendingSubmissions] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("verification_status", "pending"),
+    getActiveQuestsCountAdmin(),
+    getPendingQuestSubmissionsCount(),
+  ]);
 
   // Counts — these are real database counts, not fabricated
   const [
@@ -86,6 +97,24 @@ export default async function AdminOverviewPage() {
             label="Drafts"
             value={String(draftCount ?? 0)}
             description="Unpublished"
+            tone="muted"
+          />
+          <StatCard
+            label="Pending verifications"
+            value={String(pendingVerifications ?? 0)}
+            description="Matric reviews awaiting decision"
+            tone="default"
+          />
+          <StatCard
+            label="Active quests"
+            value={String(activeQuests ?? 0)}
+            description="Visible to students"
+            tone="success"
+          />
+          <StatCard
+            label="Pending submissions"
+            value={String(pendingSubmissions ?? 0)}
+            description="Quest evidence awaiting review"
             tone="muted"
           />
         </div>
@@ -154,6 +183,32 @@ export default async function AdminOverviewPage() {
                 <div>
                   <p className="font-semibold">Announcements</p>
                   <p className="text-sm text-muted-foreground">Create and publish notices</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/verifications" className="group block">
+            <Card className="border-border/80 bg-card shadow-none transition-colors group-hover:border-primary/40">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold">Verifications</p>
+                  <p className="text-sm text-muted-foreground">Review student matriculation submissions</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/admin/quests" className="group block">
+            <Card className="border-border/80 bg-card shadow-none transition-colors group-hover:border-primary/40">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
+                  <Trophy className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold">Quests</p>
+                  <p className="text-sm text-muted-foreground">Manage academic quests and submissions</p>
                 </div>
               </CardContent>
             </Card>

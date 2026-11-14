@@ -10,6 +10,8 @@ import {
   LogOut,
   Megaphone,
   Menu,
+  ShieldCheck,
+  Trophy,
   UserRound,
   Users,
 } from "lucide-react";
@@ -33,6 +35,8 @@ const adminNavItems = [
   { label: "Overview",      href: "/admin",               icon: LayoutGrid },
   { label: "Timetable",     href: "/admin/timetable",     icon: CalendarDays },
   { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
+  { label: "Verifications", href: "/admin/verifications", icon: ShieldCheck },
+  { label: "Quests",        href: "/admin/quests",        icon: Trophy },
   { label: "Courses",       href: "/admin/courses",       icon: BookOpen },
 ];
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { AlertCircle, CheckCircle2, Clock, Loader2, ShieldAlert } from "lucide-react";
+import { AlertCircle, Clock, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,14 @@ import type { VerificationStatus } from "@/types";
 type Props = {
   matricNumber: string | null;
   verificationStatus: VerificationStatus;
+  rejectionReason?: string | null;
 };
 
-export function VerificationBanner({ matricNumber, verificationStatus }: Props) {
+export function VerificationBanner({
+  matricNumber,
+  verificationStatus,
+  rejectionReason,
+}: Props) {
   const [state, formAction, isPending] = useActionState<CompleteProfileState, FormData>(
     submitMatricNumber,
     null
@@ -97,7 +102,15 @@ export function VerificationBanner({ matricNumber, verificationStatus }: Props) 
         <div className="text-sm">
           <p className="font-semibold">Student Verification Rejected</p>
           <p className="mt-0.5 text-xs">
-            Your student verification request was not approved. Please speak directly with your course representative or project administrator.
+            Your student verification request was not approved. Please correct the issue below and resubmit your matriculation number.
+          </p>
+          {rejectionReason ? (
+            <p className="mt-2 rounded-md border border-destructive/20 bg-background/60 px-2.5 py-2 text-xs text-foreground">
+              <span className="font-semibold">Reason:</span> {rejectionReason}
+            </p>
+          ) : null}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Update your matriculation number in the profile settings and submit it again for review.
           </p>
         </div>
       </div>
