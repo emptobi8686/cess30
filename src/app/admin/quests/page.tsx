@@ -85,12 +85,16 @@ export default async function AdminQuestsPage({
   const studentIds = [
     ...new Set(submissions.map((s) => s.student_id)),
   ];
-  const { data: studentProfiles } = await createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient();
+  const { data: studentProfiles } = await supabase
     .from("profiles")
     .select("id, full_name")
     .in("id", studentIds);
   const studentNameById = new Map(
-    (studentProfiles ?? []).map((p) => [p.id, p.full_name ?? "Unknown"])
+    (studentProfiles ?? []).map((p: { id: string; full_name: string | null }) => [
+      p.id,
+      p.full_name ?? "Unknown",
+    ])
   );
 
   return (

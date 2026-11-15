@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   validateCreateQuestInput,
   validateSubmitQuestInput,
-} from "@/features/quests/actions";
+} from "@/features/quests/validation";
 
 describe("quest creation validation", () => {
   test("accepts a valid quest input", () => {
