@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PwaInstallProvider } from "@/components/shared/pwa-install-provider";
-import { PwaServiceWorkerRegistration } from "@/components/shared/pwa-service-worker-registration";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -50,7 +49,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <PwaServiceWorkerRegistration />
         <PwaInstallProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </PwaInstallProvider>
