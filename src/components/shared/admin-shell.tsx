@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BookOpen,
+  GraduationCap,
   CalendarDays,
   ChevronDown,
   LayoutGrid,
@@ -39,6 +40,7 @@ const adminNavItems = [
   { label: "Verifications", href: "/admin/verifications", icon: ShieldCheck },
   { label: "Quests",        href: "/admin/quests",        icon: Trophy },
   { label: "Courses",       href: "/admin/courses",       icon: BookOpen },
+  { label: "Academic",      href: "/admin/academic",      icon: GraduationCap },
 ];
 
 function AdminSidebarNav({ currentLabel }: { currentLabel: string }) {
