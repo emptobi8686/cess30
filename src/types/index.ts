@@ -166,7 +166,7 @@ export type PushDevice = {
 // Quest types
 // ---------------------------------------------------------------------------
 
-export type QuestStatus = "pending" | "approved" | "rejected";
+export type QuestStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export type Quest = {
   id: string;

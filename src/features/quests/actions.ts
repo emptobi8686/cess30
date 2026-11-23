@@ -4,15 +4,14 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { accessErrorMessage, guardStudentAction, requireAdmin } from "@/lib/auth/guards";
 import { errorState, successState, type ActionState } from "@/lib/action-state";
-import type { ActionResult } from "@/types";
+import { toSafeExternalHref } from "@/lib/safe-links";
 import {
   questUpsertSchema,
   validateSubmitQuestInput,
-  type CreateQuestInput,
   type SubmitQuestInput,
 } from "./validation";
 
-export type { CreateQuestInput, SubmitQuestInput };
+export type { SubmitQuestInput };
 
 function quietRevalidateQuests() {
   revalidatePath("/quests");
@@ -96,86 +95,93 @@ export async function updateQuestAction(
 }
 
 export async function submitQuestAction(
+  _previous: ActionState,
   formData: FormData
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionState> {
+  const access = await guardStudentAction("full");
+  if (!access.ok) return errorState(access.error);
+
+  const input: SubmitQuestInput = {
+    quest_id: String(formData.get("quest_id") ?? "").trim(),
+    evidence_url: String(formData.get("evidence_url") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim() || null,
+  };
+
+  const errors = validateSubmitQuestInput(input);
+  if (errors.length > 0) return errorState(errors.join(" "));
+
+  const evidenceUrl = toSafeExternalHref(input.evidence_url);
+  if (!evidenceUrl) return errorState("Evidence must be an https:// link.");
+
   try {
-    const access = await guardStudentAction("full");
-  if (!access.ok) return access;
-  const user = { id: access.ctx.userId };
     const supabase = await createServerSupabaseClient();
 
-    const input: SubmitQuestInput = {
-      quest_id: String(formData.get("quest_id") ?? "").trim(),
-      evidence_url: String(formData.get("evidence_url") ?? "").trim(),
-      notes: String(formData.get("notes") ?? "").trim() || null,
-    };
-
-    const errors = validateSubmitQuestInput(input);
-    if (errors.length > 0) {
-      return { ok: false, error: errors.join(" ") };
-    }
-
-    // Check quest exists and is active.
     const { data: quest, error: questError } = await supabase
       .from("quests")
       .select("id, is_active, due_date")
       .eq("id", input.quest_id)
       .maybeSingle();
 
-    if (questError) {
-      return { ok: false, error: questError.message };
-    }
-    if (!quest) {
-      return { ok: false, error: "Quest not found." };
-    }
-    if (!quest.is_active) {
-      return { ok: false, error: "This quest is no longer active." };
-    }
+    if (questError) return errorState("The quest could not be loaded. Please try again.");
+    if (!quest) return errorState("Quest not found.");
+    if (!quest.is_active) return errorState("This quest is no longer active.");
     if (quest.due_date && new Date(quest.due_date) < new Date()) {
-      return { ok: false, error: "This quest's submission deadline has passed." };
+      return errorState("This quest's submission deadline has passed.");
     }
 
-    // Check for existing submission (one per student per quest).
     const { data: existing } = await supabase
       .from("quest_submissions")
       .select("id, status")
       .eq("quest_id", input.quest_id)
-      .eq("student_id", user.id)
+      .eq("student_id", access.ctx.userId)
+      .neq("status", "cancelled")
       .maybeSingle();
 
     if (existing) {
-      return {
-        ok: false,
-        error: `You have already submitted for this quest (status: ${existing.status}).`,
-      };
+      return errorState(`You have already submitted for this quest (status: ${existing.status}).`);
     }
 
-    const { data, error } = await supabase
-      .from("quest_submissions")
-      .insert({
-        quest_id: input.quest_id,
-        student_id: user.id,
-        evidence_url: input.evidence_url,
-        notes: input.notes,
-        status: "pending",
-      })
-      .select("id")
-      .single();
+    const { error } = await supabase.from("quest_submissions").insert({
+      quest_id: input.quest_id,
+      student_id: access.ctx.userId,
+      evidence_url: evidenceUrl,
+      notes: input.notes,
+    });
 
     if (error) {
-      return { ok: false, error: error.message };
+      console.error("Quest submission failed.", { code: error.code });
+      return errorState("Your evidence could not be submitted. Please try again.");
     }
 
     revalidatePath("/quests");
     revalidatePath("/dashboard");
-
-    return { ok: true, data: { id: data.id } };
+    return successState("Evidence submitted. An administrator will review it.");
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unable to submit quest evidence.",
-    };
+    return errorState(accessErrorMessage(error, "Your evidence could not be submitted."));
   }
+}
+
+export async function cancelQuestSubmissionAction(
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const access = await guardStudentAction("full");
+  if (!access.ok) return errorState(access.error);
+
+  const submissionId = String(formData.get("submissionId") ?? "").trim();
+  if (!/^[0-9a-f-]{36}$/i.test(submissionId)) return errorState("A valid submission is required.");
+
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("cancel_quest_submission", { p_submission_id: submissionId });
+  if (error) {
+    if ((error.message ?? "").includes("Only pending")) {
+      return errorState("Only pending submissions can be cancelled.");
+    }
+    return errorState("The submission could not be cancelled.");
+  }
+
+  revalidatePath("/quests");
+  return successState("Submission cancelled.");
 }
 
 export async function reviewQuestSubmissionAction(
