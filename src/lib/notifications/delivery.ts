@@ -8,6 +8,12 @@ import {
   lagosLocalTimeToUtc,
 } from "@/lib/notifications/time";
 import { getAnnouncementRecipients } from "@/lib/notifications/targeting";
+import {
+  eligibleNotificationProfiles,
+  lectureCourse,
+  type LectureRow,
+  type TargetingProfile,
+} from "@/lib/notifications/rows";
 import type {
   NotificationPreferences,
   NotificationSourceType,
@@ -17,12 +23,6 @@ import type {
 type QueryResult<T> = {
   data: T[] | null;
   error: { message: string } | null;
-};
-
-type ProfileRow = {
-  id: string;
-  department: string;
-  level: string;
 };
 
 type PreferenceRow = Pick<
@@ -37,18 +37,6 @@ type PreferenceRow = Pick<
   | "quiet_hours_start"
   | "quiet_hours_end"
 >;
-
-type LectureRow = {
-  id: string;
-  lecture_date: string;
-  start_time: string;
-  is_cancelled: boolean;
-  courses: Array<{
-    course_code: string;
-    department: string;
-    level: string;
-  }> | null;
-};
 
 type StudySessionRow = {
   id: string;
@@ -75,11 +63,11 @@ async function fetchAll<T>(
 
 async function loadTargetingData() {
   const admin = createAdminSupabaseClient();
-  const [profiles, preferences, adminRoles] = await Promise.all([
-    fetchAll<ProfileRow>((from, to) =>
+  const [profiles, preferences, roleRows] = await Promise.all([
+    fetchAll<TargetingProfile>((from, to) =>
       admin
         .from("profiles")
-        .select("id, department, level")
+        .select("id, department, level, verification_status")
         .order("id")
         .range(from, to)
     ),
@@ -92,20 +80,19 @@ async function loadTargetingData() {
         .order("user_id")
         .range(from, to)
     ),
-    fetchAll<{ user_id: string }>((from, to) =>
+    fetchAll<{ user_id: string; role: string }>((from, to) =>
       admin
         .from("user_roles")
-        .select("user_id")
-        .eq("role", "admin")
+        .select("user_id, role")
         .order("user_id")
+        .order("role")
         .range(from, to)
     ),
   ]);
-  const adminUserIds = new Set(adminRoles.map((role) => role.user_id));
 
   return {
     admin,
-    profiles: profiles.filter((profile) => !adminUserIds.has(profile.id)),
+    profiles: eligibleNotificationProfiles(profiles, roleRows),
     preferences: new Map(preferences.map((preference) => [preference.user_id, preference])),
   };
 }
@@ -259,7 +246,7 @@ export async function createDueReminderNotifications() {
   const rows: ReturnType<typeof buildReminderRow>[] = [];
 
   for (const lecture of lectures) {
-    const course = lecture.courses?.[0];
+    const course = lectureCourse(lecture);
     if (lecture.is_cancelled || !course) continue;
 
     const startAt = lagosLocalTimeToUtc(lecture.lecture_date, lecture.start_time);

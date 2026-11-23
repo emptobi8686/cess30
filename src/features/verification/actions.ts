@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth/guards";
 import { validateVerificationRejectionReason } from "@/lib/verification";
 import {
@@ -12,47 +13,59 @@ import {
 } from "@/features/verification/action-state";
 import { ACCESS_DENIED_MESSAGE, AccessDeniedError } from "@/lib/auth/guards";
 
+/**
+ * Notifies the student about a committed decision. Uses the service-role client:
+ * authenticated users have no INSERT grant on notifications (BP-023).
+ * Returns false when the notice could not be stored.
+ */
 async function createVerificationNotification(
   profileId: string,
   status: "verified" | "rejected",
-  reason?: string | null
-) {
-  const supabase = await createServerSupabaseClient();
-  const dedupeKey = `verification:${profileId}:${status}`;
+  reason: string | null
+): Promise<boolean> {
+  try {
+    const admin = createAdminSupabaseClient();
+    const { data: latest } = await admin
+      .from("profile_verification_history")
+      .select("id")
+      .eq("profile_id", profileId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  const { data: existing } = await supabase
-    .from("notifications")
-    .select("id")
-    .eq("dedupe_key", dedupeKey)
-    .maybeSingle();
+    const title = status === "verified" ? "Matriculation verified" : "Matriculation update required";
+    const message =
+      status === "verified"
+        ? "Your matriculation number has been verified and your student profile is active."
+        : `Your matriculation number was not approved. ${reason ?? "Please contact your course representative."}`.slice(0, 500);
 
-  if (existing) {
-    return;
-  }
+    const { error } = await admin.from("notifications").upsert(
+      {
+        user_id: profileId,
+        title,
+        message,
+        notification_type: "system",
+        source_type: "system",
+        source_id: null,
+        action_url: "/settings/profile",
+        dedupe_key: `verification:${profileId}:${status}:${latest?.id ?? new Date().toISOString()}`,
+        is_read: false,
+        push_requested: false,
+        push_status: "not_requested",
+      },
+      { onConflict: "dedupe_key", ignoreDuplicates: true }
+    );
 
-  const title =
-    status === "verified" ? "Matriculation verified" : "Matriculation update required";
-  const message =
-    status === "verified"
-      ? "Your matriculation number has been verified and your student profile is active."
-      : `Your matriculation number was not approved. ${reason ?? "Please contact the course representative."}`;
-
-  const { error } = await supabase.from("notifications").insert({
-    user_id: profileId,
-    title,
-    message,
-    notification_type: "system",
-    source_type: "system",
-    source_id: null,
-    action_url: "/settings/profile",
-    dedupe_key: dedupeKey,
-    is_read: false,
-    push_requested: false,
-    push_status: "not_requested",
-  });
-
-  if (error) {
-    console.error("Could not create verification notification.", error);
+    if (error) {
+      console.error("Could not create verification notification.", { code: error.code });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Could not create verification notification.", {
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    return false;
   }
 }
 
@@ -104,10 +117,11 @@ async function applyVerificationDecision(
 
     if (rpcError) return errorState(rpcErrorToMessage(rpcError));
 
-    void createVerificationNotification(profileId, nextStatus, normalizedReason);
+    const notified = await createVerificationNotification(profileId, nextStatus, normalizedReason);
     revalidateVerificationViews();
 
-    return successState(nextStatus === "verified" ? "Student verified." : "Verification rejected.");
+    const done = nextStatus === "verified" ? "Student verified." : "Verification rejected.";
+    return successState(notified ? done : `${done} The student could not be notified.`);
   } catch (error) {
     return failure(error);
   }

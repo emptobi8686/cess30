@@ -2,6 +2,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { requireAdmin } from "@/lib/auth/guards";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/lib/notifications/defaults";
 import type {
   AppNotification,
   NotificationPreferences,
@@ -19,7 +20,10 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
 
   if (error) throw new Error(error.message);
   if (!data) {
-    throw new Error("Notification preferences have not been initialized for this account.");
+    // No row yet (e.g. account created before the preferences trigger): show the
+    // database defaults; the first save upserts the row (BP-048).
+    const now = new Date().toISOString();
+    return { user_id: user.id, ...DEFAULT_NOTIFICATION_PREFERENCES, created_at: now, updated_at: now };
   }
   return data as NotificationPreferences;
 }

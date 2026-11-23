@@ -2,7 +2,8 @@ import "server-only";
 
 import * as webPush from "web-push";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { getSafeActionUrl, isSafePushEndpoint } from "@/lib/notifications/validation";
+import { isSafePushEndpoint } from "@/lib/notifications/validation";
+import { buildPushPayload } from "@/lib/notifications/payload";
 import type { AppNotification } from "@/types";
 
 function configureVapid() {
@@ -118,12 +119,7 @@ async function sendToNotification(notification: AppNotification) {
     return { sent: 0, failed: 0, removed: 0 };
   }
 
-  const payload = JSON.stringify({
-    notificationId: notification.id,
-    title: "BLUEPRINT Reminder",
-    body: "You have an upcoming academic activity.",
-    actionUrl: getSafeActionUrl(notification.action_url),
-  });
+  const payload = JSON.stringify(buildPushPayload(notification));
   let sent = 0;
   let failed = 0;
   let removed = 0;
@@ -164,6 +160,7 @@ async function sendToNotification(notification: AppNotification) {
         console.error("Web Push delivery failed.", {
           notificationId: notification.id,
           statusCode,
+          message: error instanceof Error ? error.message.slice(0, 200) : "unknown",
         });
       }
       continue;
