@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { guardStudentAction, requireAdmin } from "@/lib/auth/guards";
-import type { ActionResult, QuestStatus } from "@/types";
+import { accessErrorMessage, guardStudentAction, requireAdmin } from "@/lib/auth/guards";
+import { errorState, successState, type ActionState } from "@/lib/action-state";
+import type { ActionResult } from "@/types";
 import {
-  validateCreateQuestInput,
+  questUpsertSchema,
   validateSubmitQuestInput,
   type CreateQuestInput,
   type SubmitQuestInput,
@@ -13,123 +14,84 @@ import {
 
 export type { CreateQuestInput, SubmitQuestInput };
 
+function quietRevalidateQuests() {
+  revalidatePath("/quests");
+  revalidatePath("/admin/quests");
+  revalidatePath("/admin");
+}
+
+function firstIssue(error: { issues: Array<{ message: string }> }): string {
+  return error.issues[0]?.message ?? "Check the quest details and try again.";
+}
+
+function questFormValues(formData: FormData) {
+  return {
+    title: String(formData.get("title") ?? ""),
+    description: String(formData.get("description") ?? ""),
+    xp_reward: String(formData.get("xp_reward") ?? ""),
+    due_date: String(formData.get("due_date") ?? ""),
+    is_active: formData.get("is_active") === null ? undefined : String(formData.get("is_active")),
+  };
+}
+
 export async function createQuestAction(
+  _previous: ActionState,
   formData: FormData
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionState> {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
+    const parsed = questUpsertSchema.safeParse(questFormValues(formData));
+    if (!parsed.success) return errorState(firstIssue(parsed.error));
 
     const supabase = await createServerSupabaseClient();
-
-    const input: CreateQuestInput = {
-      title: String(formData.get("title") ?? "").trim(),
-      description: String(formData.get("description") ?? "").trim(),
-      xp_reward: Number(formData.get("xp_reward") ?? 0),
-      due_date: String(formData.get("due_date") ?? "").trim() || null,
-      is_active: String(formData.get("is_active") ?? "").toLowerCase() === "on",
-    };
-
-    const errors = validateCreateQuestInput(input);
-    if (errors.length > 0) {
-      return { ok: false, error: errors.join(" ") };
-    }
-
-    const { data, error } = await supabase
-      .from("quests")
-      .insert({
-        title: input.title,
-        description: input.description,
-        xp_reward: input.xp_reward,
-        due_date: input.due_date,
-        is_active: input.is_active,
-      })
-      .select("id")
-      .single();
+    const { error } = await supabase.from("quests").insert({
+      ...parsed.data,
+      created_by: admin.userId,
+    });
 
     if (error) {
-      return { ok: false, error: error.message };
+      console.error("Quest creation failed.", { code: error.code });
+      return errorState("The quest could not be created. Please try again.");
     }
 
-    revalidatePath("/quests");
-    revalidatePath("/admin/quests");
-    revalidatePath("/admin");
-
-    return { ok: true, data: { id: data.id } };
+    quietRevalidateQuests();
+    return successState(`Quest "${parsed.data.title}" created.`);
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unable to create quest.",
-    };
+    return errorState(accessErrorMessage(error, "The quest could not be created."));
   }
 }
 
 export async function updateQuestAction(
+  _previous: ActionState,
   formData: FormData
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionState> {
   try {
-    const adminUser = await requireAdmin();
+    await requireAdmin();
 
     const questId = String(formData.get("questId") ?? "").trim();
-    if (!questId || !/^[0-9a-fA-F-]{36}$/.test(questId)) {
-      return { ok: false, error: "A valid quest is required." };
-    }
+    if (!/^[0-9a-f-]{36}$/i.test(questId)) return errorState("A valid quest is required.");
+
+    const parsed = questUpsertSchema.safeParse(questFormValues(formData));
+    if (!parsed.success) return errorState(firstIssue(parsed.error));
 
     const supabase = await createServerSupabaseClient();
-
-    const input: Partial<CreateQuestInput> = {
-      title: String(formData.get("title") ?? "").trim() || undefined,
-      description: String(formData.get("description") ?? "").trim() || undefined,
-      xp_reward:
-        formData.get("xp_reward") !== null && formData.get("xp_reward") !== undefined
-          ? Number(formData.get("xp_reward"))
-          : undefined,
-      due_date:
-        formData.get("due_date") !== null && formData.get("due_date") !== undefined
-          ? String(formData.get("due_date") ?? "").trim() || null
-          : undefined,
-      is_active:
-        formData.get("is_active") !== null && formData.get("is_active") !== undefined
-          ? String(formData.get("is_active")).toLowerCase() === "on"
-          : undefined,
-    };
-
-    const updateData: Record<string, unknown> = {};
-    if (input.title !== undefined) {
-      updateData.title = input.title;
-    }
-    if (input.description !== undefined) {
-      updateData.description = input.description;
-    }
-    if (input.xp_reward !== undefined) {
-      updateData.xp_reward = input.xp_reward;
-    }
-    if (input.due_date !== undefined) {
-      updateData.due_date = input.due_date;
-    }
-    if (input.is_active !== undefined) {
-      updateData.is_active = input.is_active;
-    }
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("quests")
-      .update(updateData)
-      .eq("id", questId);
+      .update(parsed.data)
+      .eq("id", questId)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
-      return { ok: false, error: error.message };
+      console.error("Quest update failed.", { code: error.code });
+      return errorState("The quest could not be saved. Please try again.");
     }
+    if (!data) return errorState("Quest not found.");
 
-    void adminUser;
-    revalidatePath("/quests");
-    revalidatePath("/admin/quests");
-    revalidatePath("/admin");
-
-    return { ok: true, data: { id: questId } };
+    quietRevalidateQuests();
+    return successState("Quest saved.");
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unable to update quest.",
-    };
+    return errorState(accessErrorMessage(error, "The quest could not be saved."));
   }
 }
 
@@ -216,64 +178,44 @@ export async function submitQuestAction(
   }
 }
 
-export type ReviewQuestSubmissionInput = {
-  submission_id: string;
-  new_status: QuestStatus;
-  rejection_reason: string | null;
-};
-
 export async function reviewQuestSubmissionAction(
+  _previous: ActionState,
   formData: FormData
-): Promise<ActionResult<{ status: QuestStatus }>> {
+): Promise<ActionState> {
   try {
     await requireAdmin();
 
-    const supabase = await createServerSupabaseClient();
-
     const submissionId = String(formData.get("submissionId") ?? "").trim();
-    const newStatus = String(formData.get("new_status") ?? "").trim() as QuestStatus;
+    const newStatus = String(formData.get("new_status") ?? "").trim();
     const rejectionReason = String(formData.get("rejection_reason") ?? "").trim() || null;
 
-    if (!submissionId || !/^[0-9a-fA-F-]{36}$/.test(submissionId)) {
-      return { ok: false, error: "A valid submission is required." };
-    }
-
-    if (newStatus !== "approved" && newStatus !== "rejected") {
-      return { ok: false, error: "Invalid review decision." };
-    }
-
+    if (!/^[0-9a-f-]{36}$/i.test(submissionId)) return errorState("A valid submission is required.");
+    if (newStatus !== "approved" && newStatus !== "rejected") return errorState("Invalid review decision.");
     if (newStatus === "rejected" && (!rejectionReason || rejectionReason.length < 12)) {
-      return { ok: false, error: "Rejection reason must be at least 12 characters." };
+      return errorState("Rejection reason must be at least 12 characters.");
     }
 
-    // Call the atomic database RPC. The RPC independently verifies admin
-    // authorization, locks the submission row, validates the decision, and
-    // updates the submission + awards XP in one transaction.
-    const { data: rpcResult, error: rpcError } = await supabase.rpc(
-      "review_quest_submission",
-      {
-        p_submission_id: submissionId,
-        p_new_status: newStatus,
-        p_rejection_reason: rejectionReason ?? null,
-      }
-    );
+    // The RPC re-checks admin rights, blocks self-review, locks the row and awards
+    // XP in the same transaction.
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase.rpc("review_quest_submission", {
+      p_submission_id: submissionId,
+      p_new_status: newStatus,
+      p_rejection_reason: rejectionReason,
+    });
 
-    if (rpcError) {
-      return { ok: false, error: rpcError.message };
+    if (error) {
+      const message = error.message ?? "";
+      if (message.includes("already been reviewed")) return errorState("This submission has already been reviewed.");
+      if (message.includes("their own quest submissions")) return errorState("You cannot review your own submission.");
+      console.error("Quest review failed.", { code: error.code });
+      return errorState("The review could not be saved. Please try again.");
     }
 
-    revalidatePath("/quests");
-    revalidatePath("/admin/quests");
-    revalidatePath("/admin");
+    quietRevalidateQuests();
     revalidatePath("/leaderboard");
-
-    void rpcResult;
-
-    return { ok: true, data: { status: newStatus } };
+    return successState(newStatus === "approved" ? "Submission approved and XP awarded." : "Submission rejected.");
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unable to review quest submission.",
-    };
+    return errorState(accessErrorMessage(error, "The review could not be saved."))
   }
 }
