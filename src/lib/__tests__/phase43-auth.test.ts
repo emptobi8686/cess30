@@ -1,6 +1,6 @@
 import { describe, test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { formatOAuthError } from "@/app/auth/confirm/route";
+import { formatOAuthError, messageFromCode } from "@/lib/auth/messages";
 import { safeNextPath } from "@/lib/auth/safe-next";
 
 describe("Phase 4.3: safeNextPath destination validation", () => {
@@ -36,13 +36,13 @@ describe("Phase 4.3: safeNextPath destination validation", () => {
 describe("Phase 4.3: formatOAuthError mapping", () => {
   test("detects cancelled Google authentication", () => {
     const msg1 = formatOAuthError("access_denied", "User cancelled the login prompt");
-    assert.match(msg1, /cancelled/i);
+    assert.equal(msg1, "oauth_cancelled");
 
     const msg2 = formatOAuthError(null, "User canceled authentication");
-    assert.match(msg2, /cancelled/i);
+    assert.equal(msg2, "oauth_cancelled");
 
     const msg3 = formatOAuthError("access_denied", null);
-    assert.match(msg3, /cancelled/i);
+    assert.equal(msg3, "oauth_cancelled");
   });
 
   test("detects existing account conflicts without exposing raw internal traces", () => {
@@ -50,13 +50,14 @@ describe("Phase 4.3: formatOAuthError mapping", () => {
       "identity_already_exists",
       "User already registered with another provider"
     );
-    assert.match(msg, /already exists/i);
-    assert.match(msg, /email and password/i);
+    assert.equal(msg, "account_exists");
+    assert.match(messageFromCode(msg) ?? "", /email and password/i);
   });
 
   test("returns clear generic message for other errors", () => {
+    // BP-040: provider text is no longer echoed; a fixed code is returned instead.
     const msg = formatOAuthError("server_error", "Internal server error occurred");
-    assert.equal(msg, "Internal server error occurred");
+    assert.equal(msg, "signin_failed");
   });
 });
 

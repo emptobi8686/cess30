@@ -94,7 +94,7 @@ export function RegisterForm() {
       setSuccess("Registration submitted. Please check your email to confirm your account.");
       setIsEmailSubmitting(false);
       setForm({ fullName: "", matricNumber: "", email: "", password: "" });
-      router.push("/login?message=" + encodeURIComponent("Registration submitted. Please check your email to confirm your account."));
+      router.push("/login?message=registration_submitted");
     } catch {
       setError("Unable to complete registration. Please try again.");
       setIsEmailSubmitting(false);
