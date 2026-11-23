@@ -18,3 +18,14 @@ Recorded during P0 Task 2 on branch `claude/upbeat-lovelace-rot6of`. Node 22.23.
 - Build success does **not** cover runtime defects found by the audit (e.g. BP-009 form actions, BP-010 menus); those are P3.
 - 10 lint warnings are cleanup items for P4 Task 10.
 - `npm audit` moderate findings are reviewed in P4 Task 10 (dependency hygiene).
+
+## Database (P0 Task 3)
+
+The Supabase Docker images could not be pulled in the implementation environment
+(`public.ecr.aws`: "Data limit exceeded"; Docker Hub: 429), so `supabase db reset` could not run there.
+`scripts/db-test-local.sh` (plain PostgreSQL 16 + `supabase/tests/local/supabase_shim.sql` + pgTAP)
+was used instead:
+
+- Migrations **001–013 apply**.
+- Migration **014 fails**: `ERROR: syntax error at or near "not"` at `create policy if not exists …` (BP-002, now confirmed by execution).
+- `000_smoke.test.sql` therefore cannot run yet (expected red until P1 Task 1).

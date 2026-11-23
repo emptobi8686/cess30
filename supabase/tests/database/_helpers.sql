@@ -1,0 +1,64 @@
+-- Shared pgTAP helpers. Include at the top of every test file, inside its transaction:
+--   begin; \ir _helpers.sql
+-- Everything here is created inside the test transaction and rolled back with it.
+-- Runner note: works with pg_prove (scripts/db-test-local.sh) and `supabase test db`,
+-- both of which execute files through psql, so `\ir` is supported.
+
+create extension if not exists pgtap;
+create schema if not exists tests;
+grant usage on schema tests to anon, authenticated, service_role;
+
+-- Creates an auth user (the auth trigger creates the profile) and returns its id.
+create or replace function tests.create_user(p_email text, p_meta jsonb default '{}'::jsonb)
+returns uuid language plpgsql security definer set search_path = pg_catalog, public as $$
+declare v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (id, email, raw_user_meta_data, aud, role)
+  values (v_id, p_email, coalesce(p_meta, '{}'::jsonb), 'authenticated', 'authenticated');
+  return v_id;
+end $$;
+
+-- Impersonates an authenticated user for the rest of the transaction.
+create or replace function tests.authenticate_as(p_uid uuid)
+returns void language plpgsql as $$
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_uid, 'role', 'authenticated')::text, true);
+end $$;
+
+-- Impersonates the anonymous API role.
+create or replace function tests.as_anon()
+returns void language plpgsql as $$
+begin
+  perform set_config('role', 'anon', true);
+  perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+end $$;
+
+-- Returns to the session user (postgres) and clears JWT claims.
+create or replace function tests.as_postgres()
+returns void language plpgsql as $$
+begin
+  execute 'reset role';
+  perform set_config('request.jwt.claims', '', true);
+end $$;
+
+-- Grants the admin role to a user (bypassing RLS).
+create or replace function tests.make_admin(p_uid uuid)
+returns void language plpgsql security definer set search_path = pg_catalog, public as $$
+begin
+  insert into public.user_roles (user_id, role, assigned_by)
+  values (p_uid, 'admin', p_uid)
+  on conflict (user_id, role) do nothing;
+end $$;
+
+-- Forces a verification status, bypassing the identity-protection triggers.
+create or replace function tests.set_verification(p_uid uuid, p_status text)
+returns void language plpgsql security definer set search_path = pg_catalog, public as $$
+begin
+  alter table public.profiles disable trigger user;
+  update public.profiles set verification_status = p_status where id = p_uid;
+  alter table public.profiles enable trigger user;
+end $$;
+
+grant execute on all functions in schema tests to anon, authenticated, service_role;
