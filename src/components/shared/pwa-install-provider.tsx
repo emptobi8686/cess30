@@ -28,6 +28,14 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
   const [installPrompt, setInstallPrompt] = useState<DeferredInstallPrompt | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
+  // Register the service worker once (offline fallback + push display).
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch((error: unknown) => {
+      console.error("BLUEPRINT service worker registration failed.", error);
+    });
+  }, []);
+
   useEffect(() => {
     const standaloneQuery = window.matchMedia("(display-mode: standalone)");
     const updateInstalled = () => setIsInstalled(standaloneQuery.matches);
