@@ -52,8 +52,10 @@ revoke all on public.student_placements, public.course_enrollments from public, 
 grant select on public.student_placements, public.course_enrollments to authenticated;
 grant all on public.student_placements, public.course_enrollments to service_role;
 
+drop policy if exists "student_placements_select" on public.student_placements;
 create policy "student_placements_select" on public.student_placements for select to authenticated
   using (student_id = auth.uid() or public.is_admin());
+drop policy if exists "course_enrollments_select" on public.course_enrollments;
 create policy "course_enrollments_select" on public.course_enrollments for select to authenticated
   using (student_id = auth.uid() or public.is_admin());
 
