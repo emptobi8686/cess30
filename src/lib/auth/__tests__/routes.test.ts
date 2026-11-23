@@ -25,6 +25,7 @@ describe("routeAccessLevel", () => {
     ["/admin/verifications", "admin"],
     ["/admin/staff", "admin"],
     ["/admin/academic/sessions", "admin"],
+    ["/admin/academic/review", "admin"],
     ["/admin/academic/placements", "staff"],
     ["/suspended", "suspended-page"],
     ["/dashboardx", "public"],

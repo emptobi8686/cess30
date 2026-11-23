@@ -12,11 +12,14 @@ const SECTIONS = [
   { href: "/admin/academic/offerings", title: "Course offerings", text: "Offer catalogue courses to a level for a semester." },
   { href: "/admin/academic/placements", title: "Placements", text: "Confirm which level each student is in this session." },
   { href: "/admin/academic/enrollments", title: "Enrolments", text: "Enrol a level into its courses and add carry-over students." },
+  { href: "/admin/academic/review", title: "Migration review", text: "Resolve old content that could not be matched to a level or class." },
 ];
 
 export default async function AcademicOverviewPage() {
   const access = await getAccessContext();
-  const sections = SECTIONS.filter((section) => access?.isAdmin || section.href !== "/admin/academic/sessions");
+  const sections = SECTIONS.filter(
+    (section) => access?.isAdmin || !["/admin/academic/sessions", "/admin/academic/review"].includes(section.href)
+  );
   const sessions = await getAcademicSessions();
   const current = currentLabels(sessions);
 

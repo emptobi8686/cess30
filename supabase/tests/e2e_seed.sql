@@ -79,3 +79,11 @@ join public.semesters sem on sem.number = 1
 join public.academic_sessions s on s.id = sem.session_id and s.label = '2026/2027'
 where c.course_code = 'GET209'
 on conflict (course_id, semester_id, level_code) do nothing;
+
+-- A legacy level announcement for the migration review journey (E4): the backfill hides it
+-- and queues it for an administrator.
+insert into public.announcements (title, content, scope, created_by, is_published, published_at)
+select 'Legacy level notice', 'Posted before levels existed.', 'level', p.id, true, now() - interval '1 day'
+from public.profiles p where p.matric_number = '900000005'
+and not exists (select 1 from public.announcements where title = 'Legacy level notice');
+select public.run_legacy_backfill();

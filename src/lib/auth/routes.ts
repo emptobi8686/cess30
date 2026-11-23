@@ -30,7 +30,7 @@ const READ_ROUTES = [
 const FULL_ROUTES = ["/study-planner", "/quests", "/leaderboard"] as const;
 
 /** Admin areas a course representative never reaches (decision 0004 guardrails). */
-const ADMIN_ONLY_ROUTES = ["/admin/verifications", "/admin/staff", "/admin/academic/sessions"] as const;
+const ADMIN_ONLY_ROUTES = ["/admin/verifications", "/admin/staff", "/admin/academic/sessions", "/admin/academic/review"] as const;
 
 function matches(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
