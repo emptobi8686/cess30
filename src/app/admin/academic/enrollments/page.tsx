@@ -1,3 +1,4 @@
+import { getAccessContext } from "@/lib/auth/access-server";
 import Link from "next/link";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
@@ -15,7 +16,10 @@ export default async function EnrollmentsPage(props: PageProps<"/admin/academic/
   const params = await props.searchParams;
   const sessions = await getAcademicSessions();
   const semester = sessions.flatMap((s) => s.semesters.map((sem) => ({ ...sem, sessionLabel: s.label }))).find((s) => s.is_current) ?? null;
-  const offerings = semester ? await getOfferings({ semesterId: semester.id }) : [];
+  const access = await getAccessContext();
+  const allOfferings = semester ? await getOfferings({ semesterId: semester.id }) : [];
+  // Course representatives see their own levels' offerings only (RLS enforces the writes).
+  const offerings = access?.isAdmin ? allOfferings : allOfferings.filter((o) => access?.staffLevels.includes(o.level_code));
   const offeringId = typeof params.offering === "string" ? params.offering : null;
   const offering = offerings.find((o) => o.id === offeringId) ?? null;
   const q = typeof params.q === "string" ? params.q.slice(0, 80) : "";

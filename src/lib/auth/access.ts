@@ -15,11 +15,21 @@ export type AccessLevel = "none" | "read" | "full";
 
 export type AppRole = "student" | "admin";
 
+/** Staff capabilities approved by decision 0004 (P7). */
+export type Capability = "department_admin" | "level_coordinator";
+
+export type CapabilityRow = { capability: string; level_code: string | null };
+
 export type AccessContext = {
   userId: string;
+  /** Administrator or active department_admin assignment. */
   isAdmin: boolean;
   roles: AppRole[];
   verificationStatus: VerificationStatus;
+  /** Levels this user coordinates as a course representative (sorted). */
+  staffLevels: string[];
+  /** Admin, or holds any active staff capability. Navigation only: the database authorises every write. */
+  isStaff: boolean;
 };
 
 const KNOWN_ROLES: readonly AppRole[] = ["student", "admin"];
@@ -33,7 +43,8 @@ const KNOWN_STATUSES: readonly VerificationStatus[] = [
 export function resolveAccess(
   userId: string,
   roleRows: Array<{ role: string }>,
-  profile: { verification_status: string } | null
+  profile: { verification_status: string } | null,
+  capabilityRows: CapabilityRow[] = []
 ): AccessContext {
   const roles = Array.from(
     new Set(
@@ -48,11 +59,23 @@ export function resolveAccess(
     ? (status as VerificationStatus)
     : "pending";
 
+  const isAdmin =
+    roles.includes("admin") || capabilityRows.some((row) => row.capability === "department_admin");
+  const staffLevels = Array.from(
+    new Set(
+      capabilityRows
+        .filter((row) => row.capability === "level_coordinator" && row.level_code)
+        .map((row) => row.level_code as string)
+    )
+  ).sort();
+
   return {
     userId,
-    isAdmin: roles.includes("admin"),
+    isAdmin,
     roles,
     verificationStatus,
+    staffLevels,
+    isStaff: isAdmin || staffLevels.length > 0,
   };
 }
 

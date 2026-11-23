@@ -175,6 +175,8 @@ export type Quest = {
   xp_reward: number;
   due_date: string | null;
   is_active: boolean;
+  /** Audience level; null = department-wide (administrators only). */
+  level_code: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;

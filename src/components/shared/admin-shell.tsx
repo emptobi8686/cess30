@@ -15,6 +15,7 @@ import {
   Trophy,
   UserRound,
   Users,
+  UsersRound,
 } from "lucide-react";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -32,18 +33,27 @@ import { siteConfig } from "@/config/site";
 import { signOut } from "@/app/actions/auth";
 import { cn } from "cn";
 import { NotificationsMenu } from "@/components/shared/notifications/notifications-menu";
+import { visibleAdminNav } from "@/components/shared/admin-nav";
+import { useStaffAccess } from "@/components/shared/staff-access";
 
-const adminNavItems = [
-  { label: "Overview",      href: "/admin",               icon: LayoutGrid },
-  { label: "Timetable",     href: "/admin/timetable",     icon: CalendarDays },
-  { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
-  { label: "Verifications", href: "/admin/verifications", icon: ShieldCheck },
-  { label: "Quests",        href: "/admin/quests",        icon: Trophy },
-  { label: "Courses",       href: "/admin/courses",       icon: BookOpen },
-  { label: "Academic",      href: "/admin/academic",      icon: GraduationCap },
-];
+const NAV_ICONS = {
+  Overview: LayoutGrid,
+  Timetable: CalendarDays,
+  Announcements: Megaphone,
+  Verifications: ShieldCheck,
+  Quests: Trophy,
+  Courses: BookOpen,
+  Academic: GraduationCap,
+  Staff: UsersRound,
+} as const;
+
+function useAdminNavItems() {
+  const { isAdmin } = useStaffAccess();
+  return visibleAdminNav(isAdmin).map((item) => ({ ...item, icon: NAV_ICONS[item.label] }));
+}
 
 function AdminSidebarNav({ currentLabel }: { currentLabel: string }) {
+  const adminNavItems = useAdminNavItems();
   return (
     <aside className="hidden w-64 shrink-0 border-r border-border/80 bg-card/80 p-5 lg:flex lg:flex-col">
       <div className="flex items-center gap-3 border-b border-border/80 pb-5">
@@ -91,6 +101,7 @@ function AdminSidebarNav({ currentLabel }: { currentLabel: string }) {
 }
 
 function AdminMobileNav({ currentLabel }: { currentLabel: string }) {
+  const adminNavItems = useAdminNavItems();
   return (
     <Sheet>
       <SheetTrigger

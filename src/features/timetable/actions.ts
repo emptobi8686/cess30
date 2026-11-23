@@ -3,7 +3,7 @@
 import { actionError } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/guards";
+import { requireStaff } from "@/lib/auth/guards";
 import {
   describeConflicts,
   findSessionConflicts,
@@ -99,7 +99,7 @@ export async function createLectureSession(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const user = await requireAdmin();
+    const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
 
     const course_id = String(formData.get("course_id") ?? "").trim();
@@ -162,7 +162,7 @@ export async function updateLectureSession(
   formData: FormData
 ): Promise<ActionResult> {
   try {
-    const user = await requireAdmin();
+    const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
 
     const course_id = String(formData.get("course_id") ?? "").trim();
@@ -222,7 +222,7 @@ export async function updateLectureSession(
 
 export async function cancelLectureSession(id: string): Promise<ActionResult> {
   try {
-    const user = await requireAdmin();
+    const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
 
     const { data, error } = await supabase
@@ -248,7 +248,7 @@ export async function cancelLectureSession(id: string): Promise<ActionResult> {
 
 export async function restoreLectureSession(id: string): Promise<ActionResult> {
   try {
-    const user = await requireAdmin();
+    const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
 
     // Restoring must not create a duplicate active slot. Fetch the row first so
@@ -309,7 +309,7 @@ export async function restoreLectureSession(id: string): Promise<ActionResult> {
 
 export async function deleteLectureSession(id: string): Promise<ActionResult> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const supabase = await createServerSupabaseClient();
 
     const { data, error } = await supabase

@@ -9,10 +9,15 @@ import { getAdminOverviewStats } from "@/features/admin/overview";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { formatTimestamp } from "@/lib/dates";
+import { getAccessContext } from "@/lib/auth/access-server";
+import { RepOverview } from "./_components/rep-overview";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOverviewPage() {
+  const access = await getAccessContext();
+  if (access && !access.isAdmin) return <RepOverview levels={access.staffLevels} />;
+
   const user = await requireUserSession();
   const supabase = await createServerSupabaseClient();
 

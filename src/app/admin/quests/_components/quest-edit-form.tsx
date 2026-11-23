@@ -1,5 +1,6 @@
 "use client";
 
+import { QuestLevelSelect } from "./quest-level-select";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ export function QuestEditForm({ quest }: { quest: Quest }) {
         <Label htmlFor={id("due")}>Due date (Lagos time)</Label>
         <Input id={id("due")} type="datetime-local" name="due_date" defaultValue={utcIsoToLagosDateTimeLocal(quest.due_date)} />
       </div>
+      <QuestLevelSelect id={id("level")} defaultValue={quest.level_code} />
       <div className="flex items-center gap-2 self-end">
         <input id={id("active")} type="checkbox" name="is_active" defaultChecked={quest.is_active} />
         <Label htmlFor={id("active")}>Active</Label>

@@ -20,8 +20,12 @@ describe("routeAccessLevel", () => {
     ["/study-planner", "full"],
     ["/quests", "full"],
     ["/leaderboard", "full"],
-    ["/admin", "admin"],
-    ["/admin/quests", "admin"],
+    ["/admin", "staff"],
+    ["/admin/quests", "staff"],
+    ["/admin/verifications", "admin"],
+    ["/admin/staff", "admin"],
+    ["/admin/academic/sessions", "admin"],
+    ["/admin/academic/placements", "staff"],
     ["/suspended", "suspended-page"],
     ["/dashboardx", "public"],
   ];
@@ -70,5 +74,28 @@ describe("routeDecision", () => {
   });
   test("public routes are always allowed", () => {
     assert.deepEqual(routeDecision(ctx("suspended"), "/"), allow);
+  });
+});
+
+describe("course representative routes (decision 0004)", () => {
+  const rep = resolveAccess("u2", [{ role: "student" }], { verification_status: "verified" }, [
+    { capability: "level_coordinator", level_code: "200" },
+  ]);
+
+  test("lets a course rep into the scoped admin area", () => {
+    for (const path of ["/admin", "/admin/timetable", "/admin/courses", "/admin/academic/placements", "/admin/quests"]) {
+      assert.deepEqual(routeDecision(rep, path), { action: "allow" }, path);
+    }
+  });
+
+  test("keeps verification, staff and the calendar admin-only", () => {
+    for (const path of ["/admin/verifications", "/admin/staff", "/admin/academic/sessions"]) {
+      assert.deepEqual(routeDecision(rep, path), { action: "redirect", to: "/access-denied" }, path);
+      assert.deepEqual(routeDecision(ctx("verified", ["admin"]), path), { action: "allow" }, path);
+    }
+  });
+
+  test("a student with no capability still cannot reach /admin", () => {
+    assert.deepEqual(routeDecision(ctx("verified"), "/admin/timetable"), { action: "redirect", to: "/access-denied" });
   });
 });

@@ -12,6 +12,7 @@ import {
   updateCourseAction,
 } from "@/features/courses/actions";
 import { COURSE_LEVELS } from "@/features/courses/validation";
+import { useAllowedLevels, useStaffAccess } from "@/components/shared/staff-access";
 import { IDLE_ACTION_STATE, type ActionState } from "@/lib/action-state";
 import type { CourseWithArchive } from "@/features/courses/queries";
 
@@ -25,6 +26,7 @@ function Status({ state }: { state: ActionState }) {
 }
 
 function CourseFields({ idPrefix, course }: { idPrefix: string; course?: CourseWithArchive }) {
+  const allowedLevels = useAllowedLevels();
   return (
     <>
       <div className="space-y-1.5">
@@ -44,10 +46,10 @@ function CourseFields({ idPrefix, course }: { idPrefix: string; course?: CourseW
         <select
           id={`${idPrefix}-level`}
           name="level"
-          defaultValue={course?.level ?? "200"}
+          defaultValue={course?.level ?? (allowedLevels.includes("200") ? "200" : allowedLevels[0])}
           className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm"
         >
-          {COURSE_LEVELS.map((level) => (
+          {COURSE_LEVELS.filter((level) => allowedLevels.includes(level)).map((level) => (
             <option key={level} value={level}>
               {level}
             </option>
@@ -91,6 +93,7 @@ export function CourseLifecycleButtons({ course }: { course: CourseWithArchive }
     IDLE_ACTION_STATE
   );
   const [deleteState, remove, deleting] = useActionState(deleteCourseAction, IDLE_ACTION_STATE);
+  const { isAdmin } = useStaffAccess();
   return (
     <div className="flex flex-wrap items-start gap-3">
       <form action={archive} className="space-y-1">
@@ -100,11 +103,13 @@ export function CourseLifecycleButtons({ course }: { course: CourseWithArchive }
         </Button>
         <Status state={archiveState} />
       </form>
-      <form action={remove} className="space-y-1">
-        <input type="hidden" name="courseId" value={course.id} />
-        <Button type="submit" variant="destructive" size="sm" disabled={deleting}>Delete</Button>
-        <Status state={deleteState} />
-      </form>
+      {isAdmin ? (
+        <form action={remove} className="space-y-1">
+          <input type="hidden" name="courseId" value={course.id} />
+          <Button type="submit" variant="destructive" size="sm" disabled={deleting}>Delete</Button>
+          <Status state={deleteState} />
+        </form>
+      ) : null}
     </div>
   );
 }

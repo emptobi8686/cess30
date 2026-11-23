@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { resolveAccess } from "@/lib/auth/access";
+import { resolveAccess, type CapabilityRow } from "@/lib/auth/access";
 import { routeAccessLevel, routeDecision } from "@/lib/auth/routes";
 
 const COOKIE_NAME = "blueprint-auth";
@@ -56,12 +56,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const [{ data: roleRows }, { data: profile }] = await Promise.all([
+  const isStaffArea = routeAccessLevel(pathname) === "staff" || routeAccessLevel(pathname) === "admin";
+  const [{ data: roleRows }, { data: profile }, capabilities] = await Promise.all([
     supabase.from("user_roles").select("role").eq("user_id", user.id),
     supabase.from("profiles").select("verification_status").eq("id", user.id).maybeSingle(),
+    // Course representatives' capabilities only matter for the admin area.
+    isStaffArea ? supabase.rpc("my_capabilities") : Promise.resolve({ data: [] }),
   ]);
 
-  const decision = routeDecision(resolveAccess(user.id, roleRows ?? [], profile ?? null), pathname);
+  const decision = routeDecision(
+    resolveAccess(user.id, roleRows ?? [], profile ?? null, (capabilities.data ?? []) as CapabilityRow[]),
+    pathname
+  );
 
   if (decision.action === "redirect") {
     return NextResponse.redirect(new URL(decision.to, request.url));

@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/access-server";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 const shortDate = (value: string) => formatDisplayDate(value, { day: "numeric", month: "short", year: "numeric" });
 
 export default async function AcademicSessionsPage() {
+  await requireAdminPage();
   const sessions = await getAcademicSessions();
 
   return (

@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { bulkCreateOfferingsAction, updateOfferingStatusAction } from "@/features/academic/actions";
 import { OFFERING_STATUSES } from "@/features/academic/offerings";
-import { LEVEL_CODES } from "@/features/academic/validation";
+import { useAllowedLevels } from "@/components/shared/staff-access";
 import { IDLE_ACTION_STATE } from "@/lib/action-state";
 
 type CourseOption = { id: string; course_code: string; course_title: string; level: string };
 
 export function BulkOfferForm({ semesterId, courses, defaultLevel }: { semesterId: string; courses: CourseOption[]; defaultLevel: string }) {
   const [state, action, pending] = useActionState(bulkCreateOfferingsAction, IDLE_ACTION_STATE);
+  const allowedLevels = useAllowedLevels();
   return (
     <form action={action} className="space-y-3">
       <input type="hidden" name="semesterId" value={semesterId} />
@@ -20,7 +21,7 @@ export function BulkOfferForm({ semesterId, courses, defaultLevel }: { semesterI
         <div className="space-y-1.5">
           <Label htmlFor="offer-level">Offer to level</Label>
           <select id="offer-level" name="levelCode" defaultValue={defaultLevel} className="h-9 rounded-lg border border-input bg-background px-2 text-sm">
-            {LEVEL_CODES.map((level) => (
+            {allowedLevels.map((level) => (
               <option key={level} value={level}>{level}</option>
             ))}
           </select>

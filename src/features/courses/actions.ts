@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { courseSchema } from "@/features/courses/validation";
 import { errorState, successState, type ActionState } from "@/lib/action-state";
-import { accessErrorMessage, requireAdmin } from "@/lib/auth/guards";
+import { accessErrorMessage, requireAdmin, requireStaff } from "@/lib/auth/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function revalidateCourses() {
@@ -29,7 +29,7 @@ function readCourse(formData: FormData) {
 
 export async function createCourseAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const parsed = readCourse(formData);
     if (!parsed.success) return errorState(parsed.error.issues[0]?.message ?? "Check the course details.");
 
@@ -48,7 +48,7 @@ export async function createCourseAction(_previous: ActionState, formData: FormD
 
 export async function updateCourseAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const courseId = readCourseId(formData);
     if (!courseId) return errorState("A valid course is required.");
     const parsed = readCourse(formData);
@@ -75,7 +75,7 @@ export async function updateCourseAction(_previous: ActionState, formData: FormD
 
 async function setArchived(formData: FormData, archived: boolean): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const courseId = readCourseId(formData);
     if (!courseId) return errorState("A valid course is required.");
     const supabase = await createServerSupabaseClient();

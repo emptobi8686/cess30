@@ -1,3 +1,4 @@
+import { LEVEL_CODES } from "@/features/academic/validation";
 import { z } from "zod";
 import { lagosDateTimeLocalToUtcIso } from "@/lib/dates";
 
@@ -91,6 +92,18 @@ export const questUpsertSchema = z.object({
     .union([z.literal("on"), z.literal("true"), z.literal("")])
     .optional()
     .transform((value) => value === "on" || value === "true"),
+  /** Audience: a level (course representatives may only use their own) or "" for department-wide. */
+  level_code: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) return null;
+      if (!(LEVEL_CODES as readonly string[]).includes(value)) {
+        ctx.addIssue({ code: "custom", message: "Choose a valid level." });
+        return z.NEVER;
+      }
+      return value;
+    }),
 });
 
 export type QuestUpsertInput = z.output<typeof questUpsertSchema>;

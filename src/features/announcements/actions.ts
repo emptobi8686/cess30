@@ -3,7 +3,7 @@
 import { actionError } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/guards";
+import { requireStaff } from "@/lib/auth/guards";
 import { enqueueAnnouncementNotifications } from "@/lib/notifications/delivery";
 import { announcementSchema } from "@/features/announcements/validation";
 import type { ActionResult } from "@/types";
@@ -23,7 +23,7 @@ export async function createAnnouncement(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const user = await requireAdmin();
+    const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
 
     const parsed = announcementSchema.safeParse({
@@ -97,7 +97,7 @@ export async function updateAnnouncement(
   formData: FormData
 ): Promise<ActionResult> {
   try {
-    const user = await requireAdmin();
+    const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
 
     const parsed = announcementSchema.safeParse({
@@ -140,7 +140,7 @@ export async function publishAnnouncement(
   sendPush = false
 ): Promise<ActionResult> {
   try {
-    const user = await requireAdmin();
+    const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("announcements")
@@ -188,7 +188,7 @@ export async function publishAnnouncement(
 
 export async function unpublishAnnouncement(id: string): Promise<ActionResult> {
   try {
-    const user = await requireAdmin();
+    const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("announcements")
@@ -213,7 +213,7 @@ export async function unpublishAnnouncement(id: string): Promise<ActionResult> {
 
 export async function deleteAnnouncement(id: string): Promise<ActionResult> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("announcements")

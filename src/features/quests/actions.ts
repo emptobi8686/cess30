@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { accessErrorMessage, guardStudentAction, requireAdmin } from "@/lib/auth/guards";
+import { accessErrorMessage, guardStudentAction, requireStaff } from "@/lib/auth/guards";
 import { errorState, successState, type ActionState } from "@/lib/action-state";
 import { toSafeExternalHref } from "@/lib/safe-links";
 import {
@@ -30,6 +30,7 @@ function questFormValues(formData: FormData) {
     xp_reward: String(formData.get("xp_reward") ?? ""),
     due_date: String(formData.get("due_date") ?? ""),
     is_active: formData.get("is_active") === null ? undefined : String(formData.get("is_active")),
+    level_code: String(formData.get("level_code") ?? ""),
   };
 }
 
@@ -38,7 +39,7 @@ export async function createQuestAction(
   formData: FormData
 ): Promise<ActionState> {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireStaff();
     const parsed = questUpsertSchema.safeParse(questFormValues(formData));
     if (!parsed.success) return errorState(firstIssue(parsed.error));
 
@@ -65,7 +66,7 @@ export async function updateQuestAction(
   formData: FormData
 ): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
 
     const questId = String(formData.get("questId") ?? "").trim();
     if (!/^[0-9a-f-]{36}$/i.test(questId)) return errorState("A valid quest is required.");
@@ -189,7 +190,7 @@ export async function reviewQuestSubmissionAction(
   formData: FormData
 ): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
 
     const submissionId = String(formData.get("submissionId") ?? "").trim();
     const newStatus = String(formData.get("new_status") ?? "").trim();

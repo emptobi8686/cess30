@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { LEVEL_CODES } from "@/features/academic/validation";
 import { errorState, successState, type ActionState } from "@/lib/action-state";
-import { accessErrorMessage, guardStudentAction, requireAdmin } from "@/lib/auth/guards";
+import { accessErrorMessage, guardStudentAction, requireStaff } from "@/lib/auth/guards";
 import { logServerError } from "@/lib/errors";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -42,7 +42,7 @@ export async function requestPlacementAction(_previous: ActionState, formData: F
 /** Staff: confirm or reject selected placements (never one's own; enforced in the database). */
 export async function confirmPlacementsAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const ids = Array.from(new Set(formData.getAll("placementId").map(String).filter((v) => UUID.test(v))));
     const status = String(formData.get("decision") ?? "");
     if (ids.length === 0) return errorState("Select at least one student.");

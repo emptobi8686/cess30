@@ -1,8 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { getAccessContext } from "@/lib/auth/access-server";
-import { requireAdmin } from "@/lib/auth/guards";
+import { requireStaff } from "@/lib/auth/guards";
 import type {
   LeaderboardEntry,
   LeaderboardPeriod,
@@ -151,69 +150,65 @@ export async function getLeaderboardEntry(
  * Admin: fetch all quests (active and inactive).
  */
 export async function getAllQuestsAdmin(): Promise<Quest[]> {
-  await requireAdmin();
+  const access = await requireStaff();
+  const supabase = await createServerSupabaseClient();
+  let query = supabase.from("quests").select("*").order("created_at", { ascending: false });
+  // RLS limits writes; this keeps a course representative's list to their own levels.
+  if (!access.isAdmin) query = query.in("level_code", access.staffLevels);
 
-  const admin = createAdminSupabaseClient();
-  const { data, error } = await admin
-    .from("quests")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) throw new Error(error.message);
+  const { data, error } = await query;
+  if (error) throw new Error("Could not load quests.");
   return (data ?? []) as Quest[];
 }
 
 /**
- * Admin: fetch all quest submissions with quest and student info.
+ * Staff: quest submissions with quest info (admins: all; course reps: their levels).
  */
 export async function getAllQuestSubmissionsAdmin(options?: {
   status?: QuestStatus;
 }): Promise<QuestSubmissionWithQuest[]> {
-  await requireAdmin();
-
-  const admin = createAdminSupabaseClient();
-  let query = admin
+  const access = await requireStaff();
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
     .from("quest_submissions")
-    .select(`*, quests ( id, title, xp_reward )`)
+    .select(`*, quests!inner ( id, title, xp_reward, level_code )`)
     .order("created_at", { ascending: false });
 
-  if (options?.status) {
-    query = query.eq("status", options.status);
-  }
+  if (!access.isAdmin) query = query.in("quests.level_code", access.staffLevels);
+  if (options?.status) query = query.eq("status", options.status);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("Could not load quest submissions.");
   return (data ?? []) as unknown as QuestSubmissionWithQuest[];
 }
 
 /**
- * Admin: count pending quest submissions.
+ * Staff: count pending quest submissions in scope.
  */
 export async function getPendingQuestSubmissionsCount(): Promise<number> {
-  await requireAdmin();
-
-  const admin = createAdminSupabaseClient();
-  const { count, error } = await admin
+  const access = await requireStaff();
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
     .from("quest_submissions")
-    .select("id", { count: "exact", head: true })
+    .select("id, quests!inner ( level_code )", { count: "exact", head: true })
     .eq("status", "pending");
+  if (!access.isAdmin) query = query.in("quests.level_code", access.staffLevels);
 
-  if (error) throw new Error(error.message);
+  const { count, error } = await query;
+  if (error) throw new Error("Could not count quest submissions.");
   return count ?? 0;
 }
 
 /**
- * Admin: count active quests.
+ * Staff: count active quests in scope.
  */
 export async function getActiveQuestsCountAdmin(): Promise<number> {
-  await requireAdmin();
+  const access = await requireStaff();
+  const supabase = await createServerSupabaseClient();
+  let query = supabase.from("quests").select("id", { count: "exact", head: true }).eq("is_active", true);
+  if (!access.isAdmin) query = query.in("level_code", access.staffLevels);
 
-  const admin = createAdminSupabaseClient();
-  const { count, error } = await admin
-    .from("quests")
-    .select("id", { count: "exact", head: true })
-    .eq("is_active", true);
-
-  if (error) throw new Error(error.message);
+  const { count, error } = await query;
+  if (error) throw new Error("Could not count quests.");
   return count ?? 0;
 }

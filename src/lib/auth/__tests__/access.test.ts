@@ -55,3 +55,28 @@ describe("studentAccessLevel", () => {
     }
   });
 });
+
+describe("staff capabilities", () => {
+  test("collects coordinated levels and ignores unknown capabilities", () => {
+    const ctx = resolveAccess("u1", [{ role: "student" }], { verification_status: "verified" }, [
+      { capability: "level_coordinator", level_code: "300" },
+      { capability: "level_coordinator", level_code: "200" },
+      { capability: "wizard", level_code: null },
+    ]);
+    assert.deepEqual(ctx.staffLevels, ["200", "300"]);
+    assert.equal(ctx.isStaff, true);
+    assert.equal(ctx.isAdmin, false);
+  });
+
+  test("a department_admin capability counts as admin", () => {
+    const ctx = resolveAccess("u1", [], { verification_status: "verified" }, [{ capability: "department_admin", level_code: null }]);
+    assert.equal(ctx.isAdmin, true);
+    assert.equal(ctx.isStaff, true);
+  });
+
+  test("no capabilities means not staff", () => {
+    const ctx = resolveAccess("u1", [{ role: "student" }], { verification_status: "verified" });
+    assert.equal(ctx.isStaff, false);
+    assert.deepEqual(ctx.staffLevels, []);
+  });
+});

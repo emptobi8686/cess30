@@ -7,12 +7,13 @@ import { studentAccessLevel, type AccessContext } from "@/lib/auth/access";
  *   suspended          → only /suspended (plus public pages and sign-out)
  *   verified           → every student route
  *   admin              → /admin/*, plus student routes per their own verification status
+ *   course rep (staff) → /admin/* except verification, staff and the academic calendar
  *
  * This is coarse navigation control. Server actions, route handlers and RLS
  * enforce access independently.
  */
 
-export type RouteLevel = "public" | "read" | "full" | "admin" | "suspended-page";
+export type RouteLevel = "public" | "read" | "full" | "staff" | "admin" | "suspended-page";
 
 export type RouteDecision =
   | { action: "allow" }
@@ -28,12 +29,16 @@ const READ_ROUTES = [
 
 const FULL_ROUTES = ["/study-planner", "/quests", "/leaderboard"] as const;
 
+/** Admin areas a course representative never reaches (decision 0004 guardrails). */
+const ADMIN_ONLY_ROUTES = ["/admin/verifications", "/admin/staff", "/admin/academic/sessions"] as const;
+
 function matches(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
 export function routeAccessLevel(pathname: string): RouteLevel {
-  if (matches(pathname, "/admin")) return "admin";
+  if (ADMIN_ONLY_ROUTES.some((base) => matches(pathname, base))) return "admin";
+  if (matches(pathname, "/admin")) return "staff";
   if (matches(pathname, "/suspended")) return "suspended-page";
   if (FULL_ROUTES.some((base) => matches(pathname, base))) return "full";
   if (READ_ROUTES.some((base) => matches(pathname, base))) return "read";
@@ -49,6 +54,8 @@ export function routeDecision(ctx: AccessContext, pathname: string): RouteDecisi
       return { action: "allow" };
     case "admin":
       return ctx.isAdmin ? { action: "allow" } : { action: "redirect", to: "/access-denied" };
+    case "staff":
+      return ctx.isStaff ? { action: "allow" } : { action: "redirect", to: "/access-denied" };
     case "suspended-page":
       return studentLevel === "none"
         ? { action: "allow" }

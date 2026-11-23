@@ -166,3 +166,18 @@ describe("questUpsertSchema", () => {
     assert.equal(questUpsertSchema.safeParse({ title: "La", description: "Ten chars!", xp_reward: "5" }).success, false);
   });
 });
+
+describe("questUpsertSchema level audience (decision 0004)", () => {
+  const base = { title: "Lab 1", description: "Submit your lab write-up", xp_reward: "50" };
+  test("empty level means department-wide (null)", () => {
+    const r = questUpsertSchema.safeParse({ ...base, level_code: "" });
+    assert.equal(r.success && r.data.level_code, null);
+  });
+  test("a known level is kept", () => {
+    const r = questUpsertSchema.safeParse({ ...base, level_code: "300" });
+    assert.equal(r.success && r.data.level_code, "300");
+  });
+  test("an unknown level is rejected", () => {
+    assert.equal(questUpsertSchema.safeParse({ ...base, level_code: "700" }).success, false);
+  });
+});

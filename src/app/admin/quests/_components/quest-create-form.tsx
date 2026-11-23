@@ -1,5 +1,6 @@
 "use client";
 
+import { QuestLevelSelect } from "./quest-level-select";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export function QuestCreateForm() {
         <Label htmlFor="new-quest-due">Due date (Lagos time, optional)</Label>
         <Input id="new-quest-due" type="datetime-local" name="due_date" />
       </div>
+      <QuestLevelSelect id="new-quest-level" defaultValue={null} />
       <div className="flex items-center gap-2">
         <input id="new-quest-active" type="checkbox" name="is_active" defaultChecked />
         <Label htmlFor="new-quest-active">Active (visible to students)</Label>

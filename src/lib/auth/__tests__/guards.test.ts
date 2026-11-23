@@ -45,3 +45,15 @@ describe("assertAccess", () => {
     assert.throws(() => assertAccess(ctx("pending", ["admin"]), "full"), deniedWith("forbidden"));
   });
 });
+
+describe("staff guard", () => {
+  test("allows admins and course reps, refuses other students", () => {
+    const rep = resolveAccess("u1", [{ role: "student" }], { verification_status: "verified" }, [
+      { capability: "level_coordinator", level_code: "200" },
+    ]);
+    assert.equal(assertAccess(rep, "staff").userId, "u1");
+    assert.equal(assertAccess(ctx("verified", ["admin"]), "staff").isAdmin, true);
+    assert.throws(() => assertAccess(ctx("verified"), "staff"), AccessDeniedError);
+    assert.throws(() => assertAccess(rep, "admin"), AccessDeniedError);
+  });
+});

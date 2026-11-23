@@ -1,3 +1,4 @@
+import { getAccessContext } from "@/lib/auth/access-server";
 import Link from "next/link";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
@@ -18,7 +19,11 @@ export default async function OfferingsPage(props: PageProps<"/admin/academic/of
   const requested = typeof params.semester === "string" ? params.semester : null;
   const semester =
     semesters.find((s) => s.id === requested) ?? semesters.find((s) => s.is_current) ?? semesters[0] ?? null;
-  const level = typeof params.level === "string" && LEVEL_CODES.includes(params.level as (typeof LEVEL_CODES)[number]) ? params.level : null;
+  const access = await getAccessContext();
+  const allowed: readonly string[] = access?.isAdmin ? LEVEL_CODES : (access?.staffLevels ?? []);
+  const requestedLevel = typeof params.level === "string" && allowed.includes(params.level) ? params.level : null;
+  // Course representatives always work inside their own level.
+  const level = access?.isAdmin ? requestedLevel : (requestedLevel ?? allowed[0] ?? null);
 
   const [offerings, courses] = semester
     ? await Promise.all([getOfferings({ semesterId: semester.id, levelCode: level }), getCourses()])

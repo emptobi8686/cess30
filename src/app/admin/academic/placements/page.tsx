@@ -1,3 +1,4 @@
+import { getAccessContext } from "@/lib/auth/access-server";
 import Link from "next/link";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
@@ -13,7 +14,11 @@ const STATUSES = ["claimed", "confirmed", "rejected"] as const;
 export default async function PlacementsPage(props: PageProps<"/admin/academic/placements">) {
   const params = await props.searchParams;
   const status = STATUSES.find((s) => s === params.status) ?? "claimed";
-  const level = LEVEL_CODES.find((l) => l === params.level) ?? null;
+  const access = await getAccessContext();
+  const allowed: readonly string[] = access?.isAdmin ? LEVEL_CODES : (access?.staffLevels ?? []);
+  const requested = allowed.find((l) => l === params.level) ?? null;
+  // Course representatives always work inside their own level.
+  const level = access?.isAdmin ? requested : (requested ?? allowed[0] ?? null);
   const rows = await getPlacementQueue({ status, levelCode: level });
   const href = (s: string, l: string | null) => `/admin/academic/placements?status=${s}${l ? `&level=${l}` : ""}`;
 
@@ -37,7 +42,7 @@ export default async function PlacementsPage(props: PageProps<"/admin/academic/p
               ))}
             </nav>
             <nav aria-label="Level filter" className="flex flex-wrap gap-2 text-xs">
-              {[null, ...LEVEL_CODES].map((l) => (
+              {[...(access?.isAdmin ? [null] : []), ...allowed].map((l) => (
                 <Link key={l ?? "all"} href={href(status, l)} aria-current={l === level ? "page" : undefined}
                   className={l === level ? "rounded-lg bg-primary px-2.5 py-1 text-primary-foreground" : "rounded-lg border px-2.5 py-1 hover:bg-muted"}>
                   {l ? `Level ${l}` : "All levels"}

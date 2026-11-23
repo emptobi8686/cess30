@@ -1,5 +1,6 @@
 "use client";
 
+import { useAllowedLevels, useStaffAccess } from "@/components/shared/staff-access";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -32,7 +33,11 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [scope, setScope] = useState<string>(announcement?.scope ?? "all");
+  const { isAdmin } = useStaffAccess();
+  const allowedLevels = useAllowedLevels();
+  const [scope, setScope] = useState<string>(announcement?.scope ?? (isAdmin ? "all" : "course"));
+  // Course representatives post course announcements for their own levels (the database enforces this).
+  const scopedCourses = isAdmin ? courses : courses.filter((c) => allowedLevels.includes(c.level));
   const [courseId, setCourseId] = useState<string>(announcement?.course_id ?? "");
   const [notifyStudents, setNotifyStudents] = useState(false);
 
@@ -114,9 +119,9 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
             <SelectValue placeholder="Select scope…" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All students</SelectItem>
-            <SelectItem value="department">Department</SelectItem>
-            <SelectItem value="level">Level (200)</SelectItem>
+            {isAdmin ? <SelectItem value="all">All students</SelectItem> : null}
+            {isAdmin ? <SelectItem value="department">Department</SelectItem> : null}
+            {isAdmin ? <SelectItem value="level">Level (200)</SelectItem> : null}
             <SelectItem value="course">Course-specific</SelectItem>
           </SelectContent>
         </Select>
@@ -131,7 +136,7 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
               <SelectValue placeholder="Select a course…" />
             </SelectTrigger>
             <SelectContent>
-              {courses.map((c) => (
+              {scopedCourses.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.course_code} — {c.course_title}
                 </SelectItem>

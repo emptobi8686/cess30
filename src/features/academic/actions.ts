@@ -5,7 +5,7 @@ import { LEVEL_CODES, semesterSchema, sessionSchema } from "@/features/academic/
 import { isEnrolmentType, levelEnrolMessage } from "@/features/academic/enrollments";
 import { bulkOfferingMessage, OFFERING_STATUSES, selectedCourseIds } from "@/features/academic/offerings";
 import { errorState, successState, type ActionState } from "@/lib/action-state";
-import { accessErrorMessage, requireAdmin } from "@/lib/auth/guards";
+import { accessErrorMessage, requireAdmin, requireStaff } from "@/lib/auth/guards";
 import { logServerError } from "@/lib/errors";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -100,7 +100,7 @@ export async function setCurrentSemesterAction(_previous: ActionState, formData:
 
 export async function bulkCreateOfferingsAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const semesterId = String(formData.get("semesterId") ?? "");
     const levelCode = String(formData.get("levelCode") ?? "");
     const courseIds = selectedCourseIds(formData);
@@ -129,7 +129,7 @@ export async function bulkCreateOfferingsAction(_previous: ActionState, formData
 
 export async function updateOfferingStatusAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const offeringId = String(formData.get("offeringId") ?? "");
     const status = String(formData.get("status") ?? "");
     if (!UUID.test(offeringId)) return errorState("Invalid offering.");
@@ -156,7 +156,7 @@ const ENROL_MESSAGES = ["Enrolment not found.", "Invalid enrolment status."];
 
 export async function enrollLevelCoreAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const semesterId = String(formData.get("semesterId") ?? "");
     const levelCode = String(formData.get("levelCode") ?? "");
     if (!UUID.test(semesterId)) return errorState("Choose a semester.");
@@ -176,7 +176,7 @@ export async function enrollLevelCoreAction(_previous: ActionState, formData: Fo
 
 export async function enrollStudentAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const studentId = String(formData.get("studentId") ?? "");
     const offeringId = String(formData.get("offeringId") ?? "");
     const type = String(formData.get("type") ?? "carryover");
@@ -197,7 +197,7 @@ export async function enrollStudentAction(_previous: ActionState, formData: Form
 
 export async function dropEnrollmentAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireAdmin();
+    await requireStaff();
     const enrollmentId = String(formData.get("enrollmentId") ?? "");
     if (!UUID.test(enrollmentId)) return errorState("Invalid enrolment.");
     const supabase = await createServerSupabaseClient();

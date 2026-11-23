@@ -10,7 +10,7 @@ import { studentAccessLevel, type AccessContext } from "@/lib/auth/access";
 
 export const ACCESS_DENIED_MESSAGE = "You do not have access to this action.";
 
-export type AccessNeed = "admin" | "read" | "full";
+export type AccessNeed = "admin" | "staff" | "read" | "full";
 
 export class AccessDeniedError extends Error {
   readonly code: "unauthenticated" | "forbidden" | "suspended";
@@ -28,6 +28,12 @@ export function assertAccess(ctx: AccessContext | null, need: AccessNeed): Acces
 
   if (need === "admin") {
     if (!ctx.isAdmin) throw new AccessDeniedError("forbidden");
+    return ctx;
+  }
+
+  if (need === "staff") {
+    if (!ctx.isStaff) throw new AccessDeniedError("forbidden");
+    if (!ctx.isAdmin && studentAccessLevel(ctx) !== "full") throw new AccessDeniedError("forbidden");
     return ctx;
   }
 
@@ -58,6 +64,14 @@ async function loadAccessContext(): Promise<AccessContext | null> {
 
 export async function requireAdmin(): Promise<AccessContext> {
   return assertAccess(await loadAccessContext(), "admin");
+}
+
+/**
+ * Admins and course representatives. Coarse check only: RLS and the RPCs decide which
+ * level each write may touch (has_capability), so actions behind this guard rely on them.
+ */
+export async function requireStaff(): Promise<AccessContext> {
+  return assertAccess(await loadAccessContext(), "staff");
 }
 
 export async function requireStudentAccess(need: "read" | "full"): Promise<AccessContext> {

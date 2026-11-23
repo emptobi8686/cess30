@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/access-server";
 import Link from "next/link";
 import { ArrowLeft, Search } from "lucide-react";
 import { AdminShell } from "@/components/shared/admin-shell";
@@ -22,6 +23,7 @@ export default async function AdminVerificationsPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
 }) {
+  await requireAdminPage();
   const params = await Promise.resolve(searchParams ?? {});
   const activeStatus = toString(params.status) || "pending";
   const query = toString(params.q) || "";

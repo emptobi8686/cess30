@@ -1,3 +1,4 @@
+import { getAccessContext } from "@/lib/auth/access-server";
 import Link from "next/link";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
@@ -14,6 +15,8 @@ const SECTIONS = [
 ];
 
 export default async function AcademicOverviewPage() {
+  const access = await getAccessContext();
+  const sections = SECTIONS.filter((section) => access?.isAdmin || section.href !== "/admin/academic/sessions");
   const sessions = await getAcademicSessions();
   const current = currentLabels(sessions);
 
@@ -32,7 +35,7 @@ export default async function AcademicOverviewPage() {
           </span>
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          {SECTIONS.map((section) => (
+          {sections.map((section) => (
             <Link key={section.href} href={section.href} className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-primary">
               <Card className="h-full transition-colors hover:border-primary/50">
                 <CardHeader className="pb-2"><CardTitle className="text-base">{section.title}</CardTitle></CardHeader>
