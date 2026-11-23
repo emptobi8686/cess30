@@ -202,6 +202,7 @@ export async function getCourses(): Promise<Course[]> {
   const { data, error } = await supabase
     .from("courses")
     .select("*")
+    .is("archived_at", null)
     .order("course_code", { ascending: true });
 
   if (error) throw new Error(error.message);

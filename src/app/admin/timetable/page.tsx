@@ -26,6 +26,7 @@ export default async function AdminTimetablePage() {
     supabase
       .from("courses")
       .select("*")
+      .is("archived_at", null)
       .order("course_code", { ascending: true }),
   ]);
 

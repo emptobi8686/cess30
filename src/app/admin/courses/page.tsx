@@ -2,29 +2,21 @@ import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCourses } from "@/features/courses/queries";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { Course } from "@/types";
+import { CourseCreateForm, CourseEditForm, CourseLifecycleButtons } from "./_components/course-forms";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCoursesPage() {
   const user = await requireUserSession();
   const supabase = await createServerSupabaseClient();
+  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const { data: courses, error } = await supabase
-    .from("courses")
-    .select("*")
-    .order("course_code", { ascending: true });
-
-  const courseList: Course[] = (courses ?? []) as Course[];
-  const totalUnits = courseList.reduce((sum, c) => sum + c.credit_units, 0);
+  const courses = await getCourses({ includeArchived: true });
+  const active = courses.filter((c) => !c.archived_at);
+  const totalUnits = active.reduce((sum, c) => sum + c.credit_units, 0);
 
   return (
     <AdminShell currentLabel="Courses" displayName={profile?.full_name ?? undefined}>
@@ -32,73 +24,50 @@ export default async function AdminCoursesPage() {
         <PageHeader
           eyebrow="Admin · Courses"
           title="Course catalogue"
-          description="The official 200-level Civil Engineering course catalogue. Courses referenced by existing sessions are protected from deletion."
+          description="Add, edit or archive courses. Courses used by timetable entries cannot be deleted; archive them instead."
         />
 
-        {error && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-            Unable to load courses: {error.message}
-          </div>
-        )}
+        <p className="text-sm text-muted-foreground">
+          {active.length} active courses · {totalUnits} units
+          {courses.length > active.length ? ` · ${courses.length - active.length} archived` : ""}
+        </p>
 
-        {!error && (
-          <>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span>{courseList.length} courses</span>
-              <span>·</span>
-              <span>{totalUnits} total units</span>
-            </div>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Add a course</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CourseCreateForm />
+          </CardContent>
+        </Card>
 
-            <Card className="border-border/80 bg-card overflow-hidden">
-              <CardHeader className="border-b border-border/60 pb-3 pt-4">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  200-Level Civil Engineering
-                </CardTitle>
-              </CardHeader>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border/60 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      <th className="px-4 py-3">Code</th>
-                      <th className="px-4 py-3">Title</th>
-                      <th className="px-4 py-3">Units</th>
-                      <th className="px-4 py-3">Level</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {courseList.map((c) => (
-                      <tr key={c.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-xs font-semibold text-primary">
-                            {c.course_code}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-medium">{c.course_title}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className="text-[10px]">
-                            {c.credit_units} units
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">
-                          {c.level} Level
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <CardContent className="border-t border-border/60 pb-3 pt-3">
-                <p className="text-right text-xs font-medium text-muted-foreground">
-                  Total: {totalUnits} units
-                </p>
-              </CardContent>
-            </Card>
-
-            <p className="text-xs text-muted-foreground">
-              Course management (add, edit, remove) is performed via the Supabase dashboard or a future admin tool to prevent accidental deletion of courses referenced by existing timetable entries.
-            </p>
-          </>
-        )}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Courses</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {courses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No courses yet.</p>
+            ) : (
+              courses.map((course) => (
+                <details key={course.id} className="rounded-lg border border-border/60 p-3 open:bg-muted/20">
+                  <summary className="flex cursor-pointer flex-wrap items-center gap-3">
+                    <span className="font-mono text-sm font-semibold">{course.course_code}</span>
+                    <span className="text-sm">{course.course_title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {course.credit_units} units · Level {course.level}
+                    </span>
+                    {course.archived_at ? <Badge variant="secondary">Archived</Badge> : null}
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    <CourseEditForm course={course} />
+                    <CourseLifecycleButtons course={course} />
+                  </div>
+                </details>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AdminShell>
   );
