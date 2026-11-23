@@ -4,6 +4,8 @@ import { actionError } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { expandWeeklySeries } from "@/features/timetable/series";
+import { getLagosDateString } from "@/lib/dates";
 import { requireStaff } from "@/lib/auth/guards";
 import {
   describeConflicts,
@@ -339,6 +341,126 @@ export async function deleteLectureSession(id: string): Promise<ActionResult> {
 
     revalidateTimetable();
     return { ok: true, data: undefined };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Unexpected error." };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Weekly series (spec 5.4)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type SeriesResult = { created: number; skipped: Array<{ date: string; reason: string }> };
+
+/**
+ * Creates a weekly lecture series for one class (offering) across its semester.
+ * Each date runs the same conflict checks as a single lecture; clashing dates are
+ * skipped and reported, the rest are inserted in one batch sharing a series_id.
+ */
+export async function createLectureSeriesAction(formData: FormData): Promise<ActionResult<SeriesResult>> {
+  try {
+    const user = await requireStaff();
+    const supabase = await createServerSupabaseClient();
+
+    const offering_id = String(formData.get("offering_id") ?? "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(offering_id)) return { ok: false, error: "Choose a class for the series." };
+    const weekdays = formData.getAll("weekdays").map((v) => Number(v)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
+    const start_time = String(formData.get("start_time") ?? "").trim();
+    const end_time = String(formData.get("end_time") ?? "").trim();
+    const venue = String(formData.get("venue") ?? "").trim();
+    const lecturer_name = String(formData.get("lecturer_name") ?? "").trim() || null;
+    const skipDates = String(formData.get("skip_dates") ?? "")
+      .split(/[\s,]+/)
+      .map((d) => d.trim())
+      .filter(Boolean);
+    if (weekdays.length === 0) return { ok: false, error: "Choose at least one weekday." };
+
+    const { data: offering, error: offeringError } = await supabase
+      .from("course_offerings")
+      .select("id, course_id, semesters ( starts_on, ends_on )")
+      .eq("id", offering_id)
+      .maybeSingle();
+    if (offeringError || !offering) return { ok: false, error: "Class not found." };
+    const semester = (Array.isArray(offering.semesters) ? offering.semesters[0] : offering.semesters) as
+      | { starts_on: string; ends_on: string }
+      | null;
+    if (!semester) return { ok: false, error: "The class has no semester dates." };
+
+    const inputError = validateSessionInput({
+      course_id: offering.course_id,
+      lecture_date: semester.starts_on,
+      start_time,
+      end_time,
+      venue,
+    });
+    if (inputError) return { ok: false, error: inputError };
+
+    const today = getLagosDateString();
+    const dates = expandWeeklySeries({
+      offeringSemester: { starts_on: semester.starts_on > today ? semester.starts_on : today, ends_on: semester.ends_on },
+      weekdays,
+      startTime: start_time,
+      endTime: end_time,
+      skipDates,
+    });
+    if (dates.length === 0) return { ok: false, error: "No dates left in this semester for those weekdays." };
+
+    const skipped: SeriesResult["skipped"] = [];
+    const rows: Array<Record<string, unknown>> = [];
+    const seriesId = crypto.randomUUID();
+    for (const lecture_date of dates) {
+      const existing = await fetchConflictsForDate(supabase, lecture_date);
+      const conflicts = findSessionConflicts(
+        { course_id: offering.course_id, lecture_date, start_time, end_time, venue },
+        existing
+      );
+      const reason = conflictError(conflicts, false);
+      if (reason) {
+        skipped.push({ date: lecture_date, reason: reason.replace(/^VENUE_CONFLICT:/, "").replace(/ Submit again.*$/, "") });
+        continue;
+      }
+      rows.push({
+        course_id: offering.course_id,
+        offering_id,
+        series_id: seriesId,
+        lecture_date,
+        start_time,
+        end_time,
+        venue,
+        lecturer_name,
+        created_by: user.userId,
+        updated_by: user.userId,
+      });
+    }
+
+    if (rows.length > 0) {
+      const { error } = await supabase.from("lecture_sessions").insert(rows);
+      if (error) return actionError("timetable", error, "lecture");
+    }
+
+    revalidateTimetable();
+    return { ok: true, data: { created: rows.length, skipped } };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Unexpected error." };
+  }
+}
+
+/** Cancels every not-yet-held lecture in a series (past ones stay as history). */
+export async function cancelLectureSeriesAction(seriesId: string): Promise<ActionResult<{ cancelled: number }>> {
+  try {
+    const user = await requireStaff();
+    if (!/^[0-9a-f-]{36}$/i.test(seriesId)) return { ok: false, error: "Invalid series." };
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("lecture_sessions")
+      .update({ is_cancelled: true, cancelled_at: new Date().toISOString(), updated_by: user.userId })
+      .eq("series_id", seriesId)
+      .eq("is_cancelled", false)
+      .gte("lecture_date", getLagosDateString())
+      .select("id");
+    if (error) return actionError("timetable", error, "lecture");
+    revalidateTimetable();
+    return { ok: true, data: { cancelled: data?.length ?? 0 } };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Unexpected error." };
   }

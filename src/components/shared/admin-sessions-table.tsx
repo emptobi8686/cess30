@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { CancelSeriesButton, LectureSeriesForm } from "@/components/shared/lecture-series-form";
 import { useRouter } from "next/navigation";
 import { Edit2, Plus, RotateCcw, Trash2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -177,12 +178,26 @@ export function AdminSessionsTable({
   courses: Course[];
 }) {
   const [createOpen, setCreateOpen] = useState(false);
+  const [seriesOpen, setSeriesOpen] = useState(false);
   const router = useRouter();
 
   return (
     <div className="space-y-4">
       {/* Create button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Dialog open={seriesOpen} onOpenChange={setSeriesOpen}>
+          <DialogTrigger render={<Button variant="outline" onClick={() => setSeriesOpen(true)} />}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add weekly series
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Repeat weekly this semester</DialogTitle>
+              <DialogDescription>Schedule the same class on chosen weekdays until the semester ends. Clashing dates are skipped and listed.</DialogDescription>
+            </DialogHeader>
+            <LectureSeriesForm onDone={() => setSeriesOpen(false)} />
+          </DialogContent>
+        </Dialog>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger
             render={<Button onClick={() => setCreateOpen(true)} />}
@@ -265,6 +280,7 @@ export function AdminSessionsTable({
                       <div className="flex items-center justify-end gap-1">
                         <EditButton session={s} courses={courses} />
                         <CancelRestoreButton session={s} />
+                        {s.series_id ? <CancelSeriesButton seriesId={s.series_id} /> : null}
                         <DeleteButton session={s} />
                       </div>
                     </td>
