@@ -1,0 +1,20 @@
+-- Reverse of 035_content_audiences.sql (apply the 037 audience RLS down file first).
+drop function if exists public.replace_audiences(text, uuid, jsonb);
+drop function if exists public.can_manage_quest(uuid);
+drop function if exists public.can_manage_announcement(uuid);
+drop function if exists public.audience_row_allowed(text, text, uuid, uuid);
+drop function if exists public.can_view_lecture(uuid);
+drop function if exists public.can_view_quest(uuid);
+drop function if exists public.can_view_announcement(uuid);
+drop function if exists public.my_verification_status();
+drop function if exists public.audience_matches(text, uuid, text, uuid, uuid, uuid, uuid);
+drop table if exists public.quest_audiences;
+drop table if exists public.announcement_audiences;
+drop trigger if exists lecture_sessions_course_from_offering on public.lecture_sessions;
+drop function if exists public.lecture_sessions_course_from_offering();
+alter table public.announcements drop column if exists session_id;
+alter table public.study_sessions drop column if exists semester_id;
+alter table public.quests drop column if exists semester_id;
+alter table public.quests drop column if exists offering_id;
+alter table public.lecture_sessions drop column if exists series_id;
+alter table public.lecture_sessions drop column if exists offering_id;
