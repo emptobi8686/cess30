@@ -12,6 +12,9 @@ import {
   detectConflicts,
   VALID_REMINDERS,
   VALID_PATTERNS,
+  firstSchemaIssue,
+  studySessionSchema,
+  studySessionUpdateSchema,
 } from "@/features/study-planner/validation";
 import type {
   ActionResult,
@@ -66,6 +69,17 @@ export async function createStudySession(
   if (title.length > 150) {
     return { ok: false, error: "Study title cannot exceed 150 characters." };
   }
+
+  const parsedCreate = studySessionSchema.safeParse({
+    title,
+    study_date: studyDate ?? "",
+    start_time: startTime ?? "",
+    end_time: endTime ?? "",
+    notes,
+    location,
+    course_id: courseId ?? "",
+  });
+  if (!parsedCreate.success) return { ok: false, error: firstSchemaIssue(parsedCreate.error) };
 
   const dateError = validateStudyDate(studyDate);
   if (dateError) return { ok: false, error: dateError };
@@ -248,10 +262,15 @@ export async function updateStudySession(
     ? (rawReminder as ReminderPreference)
     : "15_min";
 
-  if (!title) return { ok: false, error: "Study goal/title is required." };
-
-  const timeError = validateStudyTimeRange(startTime, endTime);
-  if (timeError) return { ok: false, error: timeError };
+  const parsedUpdate = studySessionUpdateSchema.safeParse({
+    title: title ?? "",
+    start_time: startTime ?? "",
+    end_time: endTime ?? "",
+    notes,
+    location,
+    course_id: courseId ?? "",
+  });
+  if (!parsedUpdate.success) return { ok: false, error: firstSchemaIssue(parsedUpdate.error) };
 
   if (updateEntireSeries && existing.recurrence_id) {
     // Update all sessions in the series (preserving their individual dates)
@@ -359,16 +378,19 @@ export async function toggleStudySessionCompleted(
 
   const completedAt = completed ? new Date().toISOString() : null;
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("study_sessions")
     .update({
       completed,
       completed_at: completedAt,
     })
     .eq("id", sessionId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) return actionError("study-planner", error, "study");
+  if (!updated) return { ok: false, error: "Study session not found." };
 
   revalidatePath("/study-planner");
   revalidatePath("/dashboard");
@@ -396,7 +418,7 @@ export async function rescheduleStudySession(
   const timeError = validateStudyTimeRange(newStartTime, newEndTime);
   if (timeError) return { ok: false, error: timeError };
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("study_sessions")
     .update({
       study_date: newDate,
@@ -404,9 +426,12 @@ export async function rescheduleStudySession(
       end_time: newEndTime,
     })
     .eq("id", sessionId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) return actionError("study-planner", error, "study");
+  if (!updated) return { ok: false, error: "Study session not found." };
 
   revalidatePath("/study-planner");
   revalidatePath("/dashboard");

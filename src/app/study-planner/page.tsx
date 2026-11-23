@@ -2,7 +2,8 @@ import { DashboardShell } from "@/components/shared/dashboard-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { StudyPlannerContainer } from "@/components/shared/study-planner/study-planner-container";
 import { requireUserSession } from "@/lib/supabase/auth";
-import { getLagosNow, addDays } from "@/lib/dates";
+import { getLagosNow, isValidDateString } from "@/lib/dates";
+import { loadedRangeFor, parsePlannerView } from "@/features/study-planner/range";
 import {
   getCourses,
   getStudySessionsForDateRange,
@@ -11,18 +12,22 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function StudyPlannerPage() {
+export default async function StudyPlannerPage(props: PageProps<"/study-planner">) {
   const user = await requireUserSession();
+  const searchParams = await props.searchParams;
   const { date: todayDate } = getLagosNow();
 
-  // Load an initial 6-week window (-2 weeks to +4 weeks)
-  const rangeStart = addDays(todayDate, -14);
-  const rangeEnd = addDays(todayDate, 28);
+  const requestedDate = typeof searchParams.date === "string" ? searchParams.date : "";
+  const anchorDate = isValidDateString(requestedDate) ? requestedDate : todayDate;
+  const initialView = parsePlannerView(searchParams.view);
+
+  // Load every date any planner view can show around the anchor (BP-038).
+  const loadedRange = loadedRangeFor(anchorDate);
 
   const [courses, studySessions, lectures] = await Promise.all([
     getCourses(),
-    getStudySessionsForDateRange(user.id, rangeStart, rangeEnd),
-    getOfficialLecturesForDateRange(rangeStart, rangeEnd),
+    getStudySessionsForDateRange(user.id, loadedRange.start, loadedRange.end),
+    getOfficialLecturesForDateRange(loadedRange.start, loadedRange.end),
   ]);
 
   return (
@@ -31,7 +36,7 @@ export default async function StudyPlannerPage() {
         <PageHeader
           eyebrow="Personal study timetable"
           title="Personal Study Planner"
-          description="Build your revision rhythm around the 200-level Civil Engineering timetable. Your study sessions remain private to your account."
+          description="Plan revision around your lecture timetable. Your study sessions remain private to your account."
         />
 
         <StudyPlannerContainer
@@ -39,6 +44,9 @@ export default async function StudyPlannerPage() {
           initialStudySessions={studySessions}
           initialLectures={lectures}
           todayDate={todayDate}
+          anchorDate={anchorDate}
+          initialView={initialView}
+          loadedRange={loadedRange}
         />
       </div>
     </DashboardShell>

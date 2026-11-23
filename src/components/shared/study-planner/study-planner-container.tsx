@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { isWithinRange, type DateRange, type PlannerView } from "@/features/study-planner/range";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -56,6 +58,10 @@ type Props = {
   initialStudySessions: StudySessionWithCourse[];
   initialLectures: LectureSessionWithCourse[];
   todayDate: string;
+  /** Date the page was loaded around (from ?date=), and the window of data loaded for it. */
+  anchorDate: string;
+  initialView: PlannerView;
+  loadedRange: DateRange;
 };
 
 export function StudyPlannerContainer({
@@ -63,10 +69,14 @@ export function StudyPlannerContainer({
   initialStudySessions,
   initialLectures,
   todayDate,
+  anchorDate,
+  initialView,
+  loadedRange,
 }: Props) {
-  const [viewMode, setViewMode] = useState<ViewMode>("daily");
+  const router = useRouter();
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [selectedDate, setSelectedDate] = useState<string>(todayDate);
+  const [selectedDate, setSelectedDate] = useState<string>(anchorDate);
   const [currentWeekOffset, setCurrentWeekOffset] = useState<number>(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -80,6 +90,17 @@ export function StudyPlannerContainer({
 
   // Compute week dates for weekly view
   const weekInfo = getWeekDatesForDate(todayDate, currentWeekOffset);
+
+  // Only a window of sessions is loaded (BP-038). When the user navigates outside it,
+  // reload the page around the new date instead of showing an empty day.
+  const focusDate = viewMode === "weekly" ? weekInfo.weekStart : selectedDate;
+  const focusEnd = viewMode === "weekly" ? weekInfo.weekEnd : selectedDate;
+  const needsReload = !isWithinRange(focusDate, loadedRange) || !isWithinRange(focusEnd, loadedRange);
+  useEffect(() => {
+    if (needsReload) {
+      router.push(`/study-planner?date=${focusDate}&view=${viewMode}`, { scroll: false });
+    }
+  }, [needsReload, focusDate, viewMode, router]);
 
   function addNotification(type: Notification["type"], title: string, message?: string) {
     const id = `n-${notificationIdRef.current += 1}`;
