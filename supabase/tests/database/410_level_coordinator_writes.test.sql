@@ -25,12 +25,13 @@ select id as get209 from public.courses where course_code = 'GET209' \gset
 insert into public.course_offerings (id, course_id, semester_id, level_code) values
   ('00000000-0000-0000-0000-0000000a0411', :'get209', '00000000-0000-0000-0000-00000000f411', '200'),
   ('00000000-0000-0000-0000-0000000a0412', '00000000-0000-0000-0000-0000000c0301', '00000000-0000-0000-0000-00000000f411', '300');
-insert into public.student_placements (id, student_id, session_id, level_code) values
-  ('00000000-0000-0000-0000-0000000b0411', :'s200', '00000000-0000-0000-0000-00000000e411', '200'),
-  ('00000000-0000-0000-0000-0000000b0412', :'s300', '00000000-0000-0000-0000-00000000e411', '300'),
-  ('00000000-0000-0000-0000-0000000b0413', :'rep',  '00000000-0000-0000-0000-00000000e411', '200');
+insert into public.student_placements (id, student_id, session_id, level_code, status) values
+  ('00000000-0000-0000-0000-0000000b0411', :'s200', '00000000-0000-0000-0000-00000000e411', '200', 'confirmed'),
+  ('00000000-0000-0000-0000-0000000b0412', :'s300', '00000000-0000-0000-0000-00000000e411', '300', 'confirmed'),
+  ('00000000-0000-0000-0000-0000000b0413', :'rep',  '00000000-0000-0000-0000-00000000e411', '200', 'confirmed');
 insert into public.quests (id, title, description, xp_reward, is_active, created_by, level_code) values
   ('00000000-0000-0000-0000-0000000d0412', 'Level 300 quest', 'A quest for level 300 students.', 50, true, :'adm', '300');
+insert into public.quest_audiences (quest_id, audience_kind, level_code) values ('00000000-0000-0000-0000-0000000d0412', 'level', '300');
 
 select tests.authenticate_as(:'adm');
 select public.grant_capability(:'rep', 'level_coordinator', '200', null, null, null, 'course rep for level 200');
@@ -51,15 +52,19 @@ select throws_ok(format($$insert into public.course_offerings (course_id, semest
 select lives_ok(format($$insert into public.lecture_sessions (course_id, lecture_date, start_time, end_time, venue, created_by) values (%L, '2026-11-30', '09:00', '11:00', 'LT1', auth.uid())$$, :'get209'), 'rep schedules a level-200 lecture');
 select throws_ok($$insert into public.lecture_sessions (course_id, lecture_date, start_time, end_time, venue, created_by) values ('00000000-0000-0000-0000-0000000c0301', '2026-11-30', '09:00', '11:00', 'LT1', auth.uid())$$, '42501', null, 'rep cannot schedule a level-300 lecture');
 
--- Announcements: course announcements for own level only.
-select lives_ok(format($$insert into public.announcements (title, content, scope, course_id, created_by) values ('GET209 test moved', 'The GET209 test now holds on Friday.', 'course', %L, auth.uid())$$, :'get209'), 'rep posts a GET209 announcement');
-select throws_ok($$insert into public.announcements (title, content, scope, course_id, created_by) values ('CEE301 notice', 'Notice for level 300 students.', 'course', '00000000-0000-0000-0000-0000000c0301', auth.uid())$$, '42501', null, 'rep cannot post for a level-300 course');
-select throws_ok($$insert into public.announcements (title, content, scope, created_by) values ('Department notice', 'A notice for the whole department.', 'all', auth.uid())$$, '42501', null, 'rep cannot post department-wide');
+-- Announcements: audiences inside their own level only (E5: audiences decide who sees what).
+insert into public.announcements (id, title, content, scope, course_id, created_by)
+values ('00000000-0000-0000-0000-00000000a411', 'GET209 test moved', 'The GET209 test now holds on Friday.', 'course', :'get209', auth.uid());
+select lives_ok(format($$select public.replace_audiences('announcement_audiences', '00000000-0000-0000-0000-00000000a411', '[{"audience_kind":"course","course_id":"%s"}]')$$, :'get209'), 'rep targets a GET209 announcement');
+select throws_ok($$select public.replace_audiences('announcement_audiences', '00000000-0000-0000-0000-00000000a411', '[{"audience_kind":"course","course_id":"00000000-0000-0000-0000-0000000c0301"}]')$$, 'P0001', 'You cannot target that audience.', 'rep cannot post for a level-300 course');
+select throws_ok($$select public.replace_audiences('announcement_audiences', '00000000-0000-0000-0000-00000000a411', '[{"audience_kind":"department"}]')$$, 'P0001', 'You cannot target that audience.', 'rep cannot post department-wide');
 
 -- Quests: own level only.
-select lives_ok($$insert into public.quests (title, description, xp_reward, is_active, created_by, level_code) values ('Level 200 quest', 'Solve the tutorial sheet for level 200.', 50, true, auth.uid(), '200')$$, 'rep creates a level-200 quest');
-select throws_ok($$insert into public.quests (title, description, xp_reward, is_active, created_by, level_code) values ('Another 300 quest', 'Something for level 300 students.', 50, true, auth.uid(), '300')$$, '42501', null, 'rep cannot create a level-300 quest');
-select throws_ok($$insert into public.quests (title, description, xp_reward, is_active, created_by) values ('Department quest', 'A department-wide quest for everyone.', 50, true, auth.uid())$$, '42501', null, 'rep cannot create a department-wide quest');
+insert into public.quests (id, title, description, xp_reward, is_active, created_by)
+values ('00000000-0000-0000-0000-0000000d0411', 'Level 200 quest', 'Solve the tutorial sheet for level 200.', 50, true, auth.uid());
+select lives_ok($$select public.replace_audiences('quest_audiences', '00000000-0000-0000-0000-0000000d0411', '[{"audience_kind":"level","level_code":"200"}]')$$, 'rep targets a level-200 quest');
+select throws_ok($$select public.replace_audiences('quest_audiences', '00000000-0000-0000-0000-0000000d0411', '[{"audience_kind":"level","level_code":"300"}]')$$, 'P0001', 'You cannot target that audience.', 'rep cannot target level 300');
+select throws_ok($$select public.replace_audiences('quest_audiences', '00000000-0000-0000-0000-0000000d0412', '[{"audience_kind":"level","level_code":"200"}]')$$, 'P0001', 'You cannot change who sees this.', 'rep cannot retarget a level-300 quest');
 
 -- Quest review: own level, never own submission.
 select id as q200 from public.quests where title = 'Level 200 quest' \gset

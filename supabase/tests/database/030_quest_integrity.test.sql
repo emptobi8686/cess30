@@ -16,6 +16,9 @@ insert into public.quests (id, title, description, xp_reward, due_date, is_activ
   ('00000000-0000-0000-0000-0000000000a2', 'Inactive quest', 'An inactive quest for testing', 50, null, false, :'adm'),
   ('00000000-0000-0000-0000-0000000000a3', 'Overdue quest', 'An overdue quest for testing', 50, now() - interval '1 day', true, :'adm');
 
+-- Department-wide audience so verified students can see (and submit to) the quests (E5).
+insert into public.quest_audiences (quest_id, audience_kind, department_id)
+select id, 'department', (select id from public.departments where code = 'CVE') from public.quests;
 select tests.authenticate_as(:'stu');
 select throws_ok(
   format($$insert into public.quest_submissions (quest_id, student_id, evidence_url, status) values ('00000000-0000-0000-0000-0000000000a1', %L, 'https://example.com/e', 'approved')$$, :'stu'),

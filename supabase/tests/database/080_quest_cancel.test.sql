@@ -13,6 +13,9 @@ select tests.set_verification(:'b', 'verified');
 insert into public.quests (id, title, description, xp_reward, is_active, created_by)
 values ('00000000-0000-0000-0000-0000000000d1', 'Open quest', 'Open quest for cancel tests', 10, true, :'adm');
 
+-- Department-wide audience so verified students can see (and submit to) the quests (E5).
+insert into public.quest_audiences (quest_id, audience_kind, department_id)
+select id, 'department', (select id from public.departments where code = 'CVE') from public.quests;
 select tests.authenticate_as(:'a');
 insert into public.quest_submissions (quest_id, student_id, evidence_url)
 values ('00000000-0000-0000-0000-0000000000d1', :'a', 'https://example.com/first');
