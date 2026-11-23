@@ -63,6 +63,8 @@ jobs:
           supabase status -o env \
             | sed -n 's/^API_URL=/NEXT_PUBLIC_SUPABASE_URL=/p; s/^ANON_KEY=/NEXT_PUBLIC_SUPABASE_ANON_KEY=/p; s/^SERVICE_ROLE_KEY=/SUPABASE_SERVICE_ROLE_KEY=/p' \
             | tr -d '"' >> "$GITHUB_ENV"
+          psql "$(supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '"')" -v ON_ERROR_STOP=1 -f supabase/tests/e2e_seed.sql
+          echo "E2E_SUPABASE=1" >> "$GITHUB_ENV"
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e -- --trace off
       - if: failure()

@@ -1,27 +1,20 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveAccess } from "@/lib/auth/access";
+import { routeAccessLevel, routeDecision } from "@/lib/auth/routes";
 
 const COOKIE_NAME = "blueprint-auth";
 
-const protectedPaths = [
-  "/dashboard",
-  "/timetable",
-  "/study-planner",
-  "/announcements",
-  "/quests",
-  "/leaderboard",
-  "/settings",
-  "/notifications",
-  "/admin",
-];
-
-export async function middleware(request: NextRequest) {
+/**
+ * Coarse route guard (Next.js 16 `proxy` convention; `middleware` is deprecated).
+ * Refreshes the Supabase session cookie, sends anonymous users to /login, and
+ * applies the verification-state route policy from src/lib/auth/routes.ts.
+ * Server actions, route handlers and RLS enforce access independently.
+ */
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isProtectedRoute = protectedPaths.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`)
-  );
 
-  if (!isProtectedRoute) {
+  if (routeAccessLevel(pathname) === "public") {
     return NextResponse.next();
   }
 
@@ -63,20 +56,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Admin routes require an admin role. Check the user_roles table.
-  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  const [{ data: roleRows }, { data: profile }] = await Promise.all([
+    supabase.from("user_roles").select("role").eq("user_id", user.id),
+    supabase.from("profiles").select("verification_status").eq("id", user.id).maybeSingle(),
+  ]);
 
-  if (isAdminRoute) {
-    const { data: roleRow } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
+  const decision = routeDecision(resolveAccess(user.id, roleRows ?? [], profile ?? null), pathname);
 
-    if (!roleRow) {
-      return NextResponse.redirect(new URL("/access-denied", request.url));
-    }
+  if (decision.action === "redirect") {
+    return NextResponse.redirect(new URL(decision.to, request.url));
   }
 
   return response;
@@ -93,6 +81,6 @@ export const config = {
     "/settings/:path*",
     "/notifications/:path*",
     "/admin/:path*",
-    "/admin",
+    "/suspended/:path*",
   ],
 };
