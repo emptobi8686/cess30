@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --test \"src/**/*.test.ts\"",
+    "test": "node scripts/run-unit-tests.mjs",
     "db:test": "supabase test db supabase/tests/database",
     "db:test:local": "scripts/db-test-local.sh",
     "e2e": "playwright test",
