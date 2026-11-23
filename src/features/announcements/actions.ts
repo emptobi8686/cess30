@@ -6,6 +6,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireStaff } from "@/lib/auth/guards";
 import { enqueueAnnouncementNotifications } from "@/lib/notifications/delivery";
 import { announcementSchema } from "@/features/announcements/validation";
+import { parseAudienceField, scopeForAudiences } from "@/features/audiences/schema";
 import type { ActionResult } from "@/types";
 
 function revalidateAnnouncements() {
@@ -26,11 +27,16 @@ export async function createAnnouncement(
     const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
 
+    const audienceField = parseAudienceField(String(formData.get("audiences") ?? ""));
+    if (!audienceField.ok) return { ok: false, error: audienceField.error };
+    const audiences = audienceField.audiences;
+    const derived = scopeForAudiences(audiences);
+
     const parsed = announcementSchema.safeParse({
       title: String(formData.get("title") ?? ""),
       content: String(formData.get("content") ?? ""),
-      scope: String(formData.get("scope") ?? "").trim(),
-      course_id: String(formData.get("course_id") ?? ""),
+      scope: derived.scope,
+      course_id: derived.course_id ?? "",
     });
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the announcement details." };
@@ -39,11 +45,12 @@ export async function createAnnouncement(
     const publish = formData.get("publish") === "true";
     const notifyStudents = formData.get("notify_students") === "true";
     const sendPush = formData.get("send_push") === "true";
+    if (publish && audiences.length === 0) {
+      return { ok: false, error: "Choose who should see this announcement before publishing it." };
+    }
 
-
-    // published_at is an instant (timestamptz). It records when the row was
-    // created; the student-facing RLS gate additionally requires
-    // is_published = true and published_at <= now().
+    // Saved as a draft first; it is published only once its audiences are stored, so
+    // nobody outside the audience can ever read it (E5 deny-by-default).
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -55,13 +62,27 @@ export async function createAnnouncement(
         course_id,
         created_by: user.userId,
         updated_by: user.userId,
-        is_published: publish,
+        is_published: false,
         published_at: now,
       })
       .select("id")
       .single();
 
     if (error) return actionError("announcements", error, "announcement");
+
+    const saved = await (await import("@/features/audiences/server")).saveAudiences("announcement_audiences", data.id, audiences);
+    if (!saved.ok) {
+      await supabase.from("announcements").delete().eq("id", data.id);
+      return { ok: false, error: saved.error };
+    }
+
+    if (publish) {
+      const { error: publishError } = await supabase
+        .from("announcements")
+        .update({ is_published: true, published_at: new Date().toISOString() })
+        .eq("id", data.id);
+      if (publishError) return actionError("announcements", publishError, "announcement");
+    }
 
     if (publish && notifyStudents) {
       try {
@@ -100,16 +121,24 @@ export async function updateAnnouncement(
     const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
 
+    const audienceField = parseAudienceField(String(formData.get("audiences") ?? ""));
+    if (!audienceField.ok) return { ok: false, error: audienceField.error };
+    const derived = scopeForAudiences(audienceField.audiences);
+
     const parsed = announcementSchema.safeParse({
       title: String(formData.get("title") ?? ""),
       content: String(formData.get("content") ?? ""),
-      scope: String(formData.get("scope") ?? "").trim(),
-      course_id: String(formData.get("course_id") ?? ""),
+      scope: derived.scope,
+      course_id: derived.course_id ?? "",
     });
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the announcement details." };
     }
     const { title, content, scope, course_id } = parsed.data;
+
+    // Audiences first: the database refuses targets outside the editor's scope.
+    const saved = await (await import("@/features/audiences/server")).saveAudiences("announcement_audiences", id, audienceField.audiences);
+    if (!saved.ok) return { ok: false, error: saved.error };
 
     const { data, error } = await supabase
       .from("announcements")
@@ -142,6 +171,13 @@ export async function publishAnnouncement(
   try {
     const user = await requireStaff();
     const supabase = await createServerSupabaseClient();
+    const { count: audienceCount } = await supabase
+      .from("announcement_audiences")
+      .select("id", { count: "exact", head: true })
+      .eq("announcement_id", id);
+    if (!audienceCount) {
+      return { ok: false, error: "Choose who should see this announcement before publishing it." };
+    }
     const { data, error } = await supabase
       .from("announcements")
       .update({

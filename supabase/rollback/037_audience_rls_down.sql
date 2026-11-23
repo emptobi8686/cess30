@@ -2,6 +2,9 @@
 -- reads published announcements, active quests and all lectures; course reps scoped by
 -- announcements.scope/course_id and quests.level_code).
 
+drop function if exists public.managed_quest_ids();
+drop function if exists public.managed_announcement_ids();
+
 drop policy if exists "announcements_select_visible" on public.announcements;
 drop policy if exists "announcements_select_manage" on public.announcements;
 drop policy if exists "announcements_select_authenticated" on public.announcements;

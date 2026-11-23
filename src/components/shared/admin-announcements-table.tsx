@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { audienceBadge } from "@/features/audiences/schema";
 import { useRouter } from "next/navigation";
 import { Edit2, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -24,12 +25,6 @@ import {
 } from "@/features/announcements/actions";
 import type { Announcement, Course } from "@/types";
 
-const SCOPE_LABELS: Record<Announcement["scope"], string> = {
-  all: "All",
-  department: "Department",
-  level: "Level",
-  course: "Course",
-};
 
 function TogglePublishButton({ announcement }: { announcement: Announcement }) {
   const [open, setOpen] = useState(false);
@@ -285,7 +280,7 @@ export function AdminAnnouncementsTable({
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="outline" className="text-[10px]">
-                        {SCOPE_LABELS[a.scope]}
+                        {audienceBadge(a.announcement_audiences)}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-xs whitespace-nowrap">

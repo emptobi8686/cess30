@@ -2,6 +2,8 @@ import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { AdminAnnouncementsTable } from "@/components/shared/admin-announcements-table";
 import { requireUserSession } from "@/lib/supabase/auth";
+import { getAccessContext } from "@/lib/auth/access-server";
+import { AUDIENCE_SELECT } from "@/features/audiences/schema";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Announcement, Course } from "@/types";
 
@@ -17,12 +19,20 @@ export default async function AdminAnnouncementsPage() {
     .eq("id", user.id)
     .maybeSingle();
 
+  const access = await getAccessContext();
+  let announcementsQuery = supabase
+    .from("announcements")
+    .select(`*, announcement_audiences ( ${AUDIENCE_SELECT} )`)
+    .order("created_at", { ascending: false });
+  if (!access?.isAdmin) {
+    // Course representatives list only what they manage (not what they read as students).
+    const { data: ids } = await supabase.rpc("managed_announcement_ids");
+    announcementsQuery = announcementsQuery.in("id", ((ids ?? []) as unknown as string[]).filter(Boolean));
+  }
+
   const [{ data: announcements, error: announcementsError }, { data: courses }] =
     await Promise.all([
-      supabase
-        .from("announcements")
-        .select("*")
-        .order("created_at", { ascending: false }),
+      announcementsQuery,
       supabase
         .from("courses")
         .select("*")

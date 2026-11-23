@@ -52,6 +52,9 @@ export type UserRoleRow = {
 export type LectureSession = {
   id: string;
   course_id: string;
+  /** Course offering (E4); null for legacy lectures, which follow the course's level. */
+  offering_id?: string | null;
+  series_id?: string | null;
   lecture_date: string;
   start_time: string;
   end_time: string;
@@ -111,6 +114,8 @@ export type Announcement = {
   published_at: string;
   created_at: string;
   updated_at: string;
+  /** Who sees it (E4); loaded on admin and student pages that show audience badges. */
+  announcement_audiences?: Array<{ audience_kind: string; level_code: string | null; course_id: string | null; offering_id: string | null }>;
 };
 
 export type NotificationType =
@@ -175,8 +180,9 @@ export type Quest = {
   xp_reward: number;
   due_date: string | null;
   is_active: boolean;
-  /** Audience level; null = department-wide (administrators only). */
+  /** Legacy course-rep level tag (P7); audiences (quest_audiences) decide visibility since E5. */
   level_code: string | null;
+  quest_audiences?: Array<{ audience_kind: string; level_code: string | null; course_id: string | null; offering_id: string | null }>;
   created_by: string;
   created_at: string;
   updated_at: string;

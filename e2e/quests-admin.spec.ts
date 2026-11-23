@@ -11,6 +11,8 @@ test.describe("admin quest management (BP-008, BP-009, BP-028)", () => {
 
     await page.getByLabel("Title", { exact: true }).first().fill(title);
     await page.getByLabel("Description").first().fill("Write up the surveying field exercise.");
+    // E4: choose who sees the quest (admin picker defaults to the whole department).
+    await page.getByRole("button", { name: "Add", exact: true }).first().click();
     await page.getByRole("button", { name: "Create quest" }).click();
     await expect(page.getByRole("status").first()).toHaveText(`Quest "${title}" created.`);
 

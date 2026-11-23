@@ -12,6 +12,8 @@ test.describe("student quest submission and cancellation (BP-009, BP-029)", () =
     await page.goto("/admin/quests");
     await page.getByLabel("Title", { exact: true }).first().fill(title);
     await page.getByLabel("Description").first().fill("Upload a link to your drawing sheet.");
+    // E4: choose who sees the quest (admin picker defaults to the whole department).
+    await page.getByRole("button", { name: "Add", exact: true }).first().click();
     await page.getByRole("button", { name: "Create quest" }).click();
     await expect(page.getByRole("status").first()).toContainText("created");
   });

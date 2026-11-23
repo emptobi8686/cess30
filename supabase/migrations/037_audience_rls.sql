@@ -145,3 +145,16 @@ begin
   return format('Quest submission %s moved from pending to %s.', p_submission_id, p_new_status);
 end;
 $$;
+-- Items the caller manages (staff lists must not include what a rep merely sees as a student).
+create or replace function public.managed_quest_ids()
+returns setof uuid
+language sql stable security definer set search_path = pg_catalog, public
+as $$ select id from public.quests where public.can_manage_quest(id); $$;
+
+create or replace function public.managed_announcement_ids()
+returns setof uuid
+language sql stable security definer set search_path = pg_catalog, public
+as $$ select id from public.announcements where public.can_manage_announcement(id); $$;
+
+revoke all on function public.managed_quest_ids(), public.managed_announcement_ids() from public, anon;
+grant execute on function public.managed_quest_ids(), public.managed_announcement_ids() to authenticated;

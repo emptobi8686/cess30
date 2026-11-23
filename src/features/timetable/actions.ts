@@ -3,6 +3,7 @@
 import { actionError } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireStaff } from "@/lib/auth/guards";
 import {
   describeConflicts,
@@ -33,11 +34,17 @@ function courseCodeFromRow(row: ConflictRow): string | null {
   return row.courses.course_code ?? null;
 }
 
+/**
+ * Venue/time conflicts must consider every lecture on the date, including ones the
+ * caller cannot read since E5 (a course rep sees only their level). Only callers that
+ * passed requireStaff() reach this; it returns times, venues and course codes only.
+ */
 async function fetchConflictsForDate(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  _supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   lectureDate: string
 ): Promise<SessionConflict[]> {
-  const { data, error } = await supabase
+  void _supabase;
+  const { data, error } = await createAdminSupabaseClient()
     .from("lecture_sessions")
     .select("id, course_id, lecture_date, start_time, end_time, venue, is_cancelled, courses(course_code)")
     .eq("lecture_date", lectureDate);
@@ -103,6 +110,9 @@ export async function createLectureSession(
     const supabase = await createServerSupabaseClient();
 
     const course_id = String(formData.get("course_id") ?? "").trim();
+    const offeringRaw = String(formData.get("offering_id") ?? "").trim();
+    if (offeringRaw && !/^[0-9a-f-]{36}$/i.test(offeringRaw)) return { ok: false, error: "Choose a valid class." };
+    const offering_id = offeringRaw || null;
     const lecture_date = String(formData.get("lecture_date") ?? "").trim();
     const start_time = String(formData.get("start_time") ?? "").trim();
     const end_time = String(formData.get("end_time") ?? "").trim();
@@ -133,6 +143,7 @@ export async function createLectureSession(
       .from("lecture_sessions")
       .insert({
         course_id,
+        offering_id,
         lecture_date,
         start_time,
         end_time,
@@ -166,6 +177,9 @@ export async function updateLectureSession(
     const supabase = await createServerSupabaseClient();
 
     const course_id = String(formData.get("course_id") ?? "").trim();
+    const offeringRaw = String(formData.get("offering_id") ?? "").trim();
+    if (offeringRaw && !/^[0-9a-f-]{36}$/i.test(offeringRaw)) return { ok: false, error: "Choose a valid class." };
+    const offering_id = offeringRaw || null;
     const lecture_date = String(formData.get("lecture_date") ?? "").trim();
     const start_time = String(formData.get("start_time") ?? "").trim();
     const end_time = String(formData.get("end_time") ?? "").trim();
@@ -195,6 +209,7 @@ export async function updateLectureSession(
       .from("lecture_sessions")
       .update({
         course_id,
+        offering_id,
         lecture_date,
         start_time,
         end_time,

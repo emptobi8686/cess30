@@ -152,9 +152,12 @@ export async function getLeaderboardEntry(
 export async function getAllQuestsAdmin(): Promise<Quest[]> {
   const access = await requireStaff();
   const supabase = await createServerSupabaseClient();
-  let query = supabase.from("quests").select("*").order("created_at", { ascending: false });
-  // RLS limits writes; this keeps a course representative's list to their own levels.
-  if (!access.isAdmin) query = query.in("level_code", access.staffLevels);
+  // RLS (quests_select_manage) limits a course representative to quests they manage.
+  let query = supabase
+    .from("quests")
+    .select("*, quest_audiences ( audience_kind, level_code, course_id, offering_id )")
+    .order("created_at", { ascending: false });
+  if (!access.isAdmin) query = query.in("id", await managedIds(supabase, "managed_quest_ids"));
 
   const { data, error } = await query;
   if (error) throw new Error("Could not load quests.");
@@ -171,10 +174,10 @@ export async function getAllQuestSubmissionsAdmin(options?: {
   const supabase = await createServerSupabaseClient();
   let query = supabase
     .from("quest_submissions")
-    .select(`*, quests!inner ( id, title, xp_reward, level_code )`)
+    .select(`*, quests ( id, title, xp_reward )`)
     .order("created_at", { ascending: false });
 
-  if (!access.isAdmin) query = query.in("quests.level_code", access.staffLevels);
+  if (!access.isAdmin) query = query.in("quest_id", await managedIds(supabase, "managed_quest_ids"));
   if (options?.status) query = query.eq("status", options.status);
 
   const { data, error } = await query;
@@ -190,9 +193,9 @@ export async function getPendingQuestSubmissionsCount(): Promise<number> {
   const supabase = await createServerSupabaseClient();
   let query = supabase
     .from("quest_submissions")
-    .select("id, quests!inner ( level_code )", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("status", "pending");
-  if (!access.isAdmin) query = query.in("quests.level_code", access.staffLevels);
+  if (!access.isAdmin) query = query.in("quest_id", await managedIds(supabase, "managed_quest_ids"));
 
   const { count, error } = await query;
   if (error) throw new Error("Could not count quest submissions.");
@@ -206,9 +209,18 @@ export async function getActiveQuestsCountAdmin(): Promise<number> {
   const access = await requireStaff();
   const supabase = await createServerSupabaseClient();
   let query = supabase.from("quests").select("id", { count: "exact", head: true }).eq("is_active", true);
-  if (!access.isAdmin) query = query.in("level_code", access.staffLevels);
+  if (!access.isAdmin) query = query.in("id", await managedIds(supabase, "managed_quest_ids"));
 
   const { count, error } = await query;
   if (error) throw new Error("Could not count quests.");
   return count ?? 0;
+}
+
+async function managedIds(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  fn: "managed_quest_ids" | "managed_announcement_ids"
+): Promise<string[]> {
+  const { data, error } = await supabase.rpc(fn);
+  if (error) throw new Error("Could not load your managed items.");
+  return ((data ?? []) as unknown as string[]).filter(Boolean);
 }

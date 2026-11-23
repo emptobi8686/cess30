@@ -1,5 +1,6 @@
 "use client";
 
+import { useOfferingOptions } from "@/components/shared/audience-picker";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Loader2 } from "lucide-react";
@@ -38,12 +39,16 @@ export function LectureSessionForm({ courses, session, onSuccess }: Props) {
   const [isConflict, setIsConflict] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [courseId, setCourseId] = useState(session?.course_id ?? "");
+  const offerings = useOfferingOptions();
+  const [offeringId, setOfferingId] = useState(session?.offering_id ?? "");
 
   async function handleSubmit(formData: FormData, force = false) {
     setError(null);
     setIsConflict(false);
     setSuccess(null);
-    formData.set("course_id", courseId);
+    const offering = offerings.find((o) => o.id === offeringId);
+    formData.set("offering_id", offering ? offering.id : "");
+    formData.set("course_id", offering?.courseId ?? courseId);
     if (force) formData.set("force", "true");
 
     startTransition(async () => {
@@ -70,7 +75,25 @@ export function LectureSessionForm({ courses, session, onSuccess }: Props) {
       action={(formData) => handleSubmit(formData)}
       className="space-y-4"
     >
-      {/* Course */}
+      {/* Class: the offering decides who sees the lecture (E4) */}
+      <div className="space-y-1.5">
+        <Label htmlFor="offering_id">Class (this semester)</Label>
+        <select
+          id="offering_id"
+          value={offeringId}
+          onChange={(e) => setOfferingId(e.target.value)}
+          className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm"
+        >
+          <option value="">No offering (course level decides)</option>
+          {offerings.map((o) => (
+            <option key={o.id} value={o.id}>{o.label}</option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">Students enrolled in the class see it, including carry-over students.</p>
+      </div>
+
+      {/* Course (only when no class is chosen) */}
+      {!offeringId && (
       <div className="space-y-1.5">
         <Label htmlFor="course_id">Course</Label>
         <Select value={courseId} onValueChange={(v: string | null) => setCourseId(v ?? "")}>
@@ -86,6 +109,7 @@ export function LectureSessionForm({ courses, session, onSuccess }: Props) {
           </SelectContent>
         </Select>
       </div>
+      )}
 
       {/* Date */}
       <div className="space-y-1.5">

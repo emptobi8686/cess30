@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { StaffAccessProvider } from "@/components/shared/staff-access";
+import { AudienceOptionsProvider } from "@/components/shared/audience-picker";
+import { getAudienceOptions } from "@/features/audiences/server";
 import { getAccessContext } from "@/lib/auth/access-server";
 
 /**
@@ -18,9 +20,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/access-denied");
   }
 
+  const audienceOptions = await getAudienceOptions();
+
   return (
     <StaffAccessProvider value={{ isAdmin: access.isAdmin, staffLevels: access.staffLevels }}>
-      {children}
+      <AudienceOptionsProvider value={audienceOptions}>{children}</AudienceOptionsProvider>
     </StaffAccessProvider>
   );
 }

@@ -10,6 +10,7 @@ import {
   validateSubmitQuestInput,
   type SubmitQuestInput,
 } from "./validation";
+import { parseAudienceField } from "@/features/audiences/schema";
 
 export type { SubmitQuestInput };
 
@@ -42,16 +43,33 @@ export async function createQuestAction(
     const admin = await requireStaff();
     const parsed = questUpsertSchema.safeParse(questFormValues(formData));
     if (!parsed.success) return errorState(firstIssue(parsed.error));
+    const audienceField = parseAudienceField(String(formData.get("audiences") ?? ""));
+    if (!audienceField.ok) return errorState(audienceField.error);
+    if (audienceField.audiences.length === 0) return errorState("Choose who should see this quest.");
+    // Legacy level tag is superseded by audiences (E5).
+    const { level_code: _legacyLevel, ...fields } = parsed.data;
+    void _legacyLevel;
 
     const supabase = await createServerSupabaseClient();
-    const { error } = await supabase.from("quests").insert({
-      ...parsed.data,
-      created_by: admin.userId,
-    });
+    const { data: created, error } = await supabase
+      .from("quests")
+      .insert({ ...fields, is_active: false, created_by: admin.userId })
+      .select("id")
+      .single();
 
     if (error) {
       console.error("Quest creation failed.", { code: error.code });
       return errorState("The quest could not be created. Please try again.");
+    }
+
+    // Activated only once its audiences are stored (deny by default).
+    const saved = await (await import("@/features/audiences/server")).saveAudiences("quest_audiences", created.id, audienceField.audiences);
+    if (!saved.ok) {
+      await supabase.from("quests").delete().eq("id", created.id);
+      return errorState(saved.error);
+    }
+    if (fields.is_active) {
+      await supabase.from("quests").update({ is_active: true }).eq("id", created.id);
     }
 
     quietRevalidateQuests();
@@ -73,11 +91,18 @@ export async function updateQuestAction(
 
     const parsed = questUpsertSchema.safeParse(questFormValues(formData));
     if (!parsed.success) return errorState(firstIssue(parsed.error));
+    const audienceField = parseAudienceField(String(formData.get("audiences") ?? ""));
+    if (!audienceField.ok) return errorState(audienceField.error);
+    const { level_code: _legacyLevel, ...fields } = parsed.data;
+    void _legacyLevel;
 
     const supabase = await createServerSupabaseClient();
+    const saved = await (await import("@/features/audiences/server")).saveAudiences("quest_audiences", questId, audienceField.audiences);
+    if (!saved.ok) return errorState(saved.error);
+
     const { data, error } = await supabase
       .from("quests")
-      .update(parsed.data)
+      .update(fields)
       .eq("id", questId)
       .select("id")
       .maybeSingle();
