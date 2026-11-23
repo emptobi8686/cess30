@@ -11,7 +11,8 @@ test.describe("service worker (BP-011)", () => {
     });
     expect(active).toBe(true);
 
-    await page.reload(); // page is now controlled by the worker
+    await page.reload();
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
     await context.setOffline(true);
     await page.goto("/").catch(() => undefined);
     await expect(page.locator("body")).toContainText(/offline/i);
