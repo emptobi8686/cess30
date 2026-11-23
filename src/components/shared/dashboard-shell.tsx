@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -151,8 +152,9 @@ function ProfileMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button type="button" variant="ghost" className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted">
+      <DropdownMenuTrigger
+        render={<Button type="button" variant="ghost" className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted" />}
+      >
           {avatarUrl ? (
             <Image
               src={avatarUrl}
@@ -172,19 +174,18 @@ function ProfileMenu({
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Pilot</p>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
-        <DropdownMenuLabel>Account</DropdownMenuLabel>
-        <DropdownMenuItem className="gap-2 p-0">
-          <Link href="/settings/profile" className="flex w-full items-center gap-2 px-1.5 py-1">
-            <UserRound className="h-4 w-4" />
-            Profile &amp; settings
-          </Link>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Account</DropdownMenuLabel>
+        </DropdownMenuGroup>
+        <DropdownMenuItem className="gap-2" render={<Link href="/settings/profile" />}>
+          <UserRound className="h-4 w-4" aria-hidden />
+          Profile &amp; settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={handleSignOut}
+          onClick={handleSignOut}
           disabled={isPending}
           variant="destructive"
           className="gap-2"

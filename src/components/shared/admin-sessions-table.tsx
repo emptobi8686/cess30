@@ -96,16 +96,15 @@ function DeleteButton({ session }: { session: LectureSessionWithCourse }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button
+      <DialogTrigger
+        render={<Button
           variant="ghost"
           size="icon-sm"
           aria-label="Delete session"
           title="Delete session"
-          onClick={() => setOpen(true)}
-        >
+          onClick={() => setOpen(true)} />}
+      >
           <Trash2 className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -139,16 +138,15 @@ function EditButton({
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button
+      <DialogTrigger
+        render={<Button
           variant="ghost"
           size="icon-sm"
           aria-label="Edit session"
           title="Edit session"
-          onClick={() => setOpen(true)}
-        >
+          onClick={() => setOpen(true)} />}
+      >
           <Edit2 className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -186,11 +184,11 @@ export function AdminSessionsTable({
       {/* Create button */}
       <div className="flex justify-end">
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger>
-            <Button onClick={() => setCreateOpen(true)}>
+          <DialogTrigger
+            render={<Button onClick={() => setCreateOpen(true)} />}
+          >
               <Plus className="mr-2 h-4 w-4" />
               Add session
-            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>

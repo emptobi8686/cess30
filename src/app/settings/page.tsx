@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Bell, User } from "lucide-react";
+import { Bell, LogOut, User } from "lucide-react";
+import { signOut } from "@/app/actions/auth";
 import { DashboardShell } from "@/components/shared/dashboard-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { PwaInstallCard } from "@/components/shared/pwa-install-card";
@@ -47,6 +48,23 @@ export default async function SettingsPage() {
             <Button render={<Link href="/settings/notifications" />}>
               Manage notifications
             </Button>
+          </section>
+
+          <section className="space-y-4 rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <LogOut className="mt-1 size-5 text-primary" aria-hidden />
+              <div className="flex-1 space-y-2">
+                <h2 className="font-semibold">Sign out</h2>
+                <p className="text-sm text-muted-foreground">
+                  End your session on this device. Always sign out on shared or lab computers.
+                </p>
+              </div>
+            </div>
+            <form action={signOut}>
+              <Button type="submit" variant="outline">
+                Sign out
+              </Button>
+            </form>
           </section>
         </div>
       </div>

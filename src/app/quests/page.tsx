@@ -168,15 +168,17 @@ export default async function QuestsPage() {
                       </div>
                     ) : (
                       <Dialog>
-                        <DialogTrigger>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isOverdue}
-                            className="w-full"
-                          >
-                            {isOverdue ? "Expired" : "Submit evidence"}
-                          </Button>
+                        <DialogTrigger
+                          render={
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isOverdue}
+                              className="w-full"
+                            />
+                          }
+                        >
+                          {isOverdue ? "Expired" : "Submit evidence"}
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>

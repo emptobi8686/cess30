@@ -153,15 +153,14 @@ function DeleteAnnouncementButton({ announcement }: { announcement: Announcement
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button
+      <DialogTrigger
+        render={<Button
           variant="ghost"
           size="icon-sm"
           aria-label="Delete announcement"
-          onClick={() => setOpen(true)}
-        >
+          onClick={() => setOpen(true)} />}
+      >
           <Trash2 className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -194,10 +193,10 @@ function EditAnnouncementButton({
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button variant="ghost" size="icon-sm" aria-label="Edit announcement" onClick={() => setOpen(true)}>
+      <DialogTrigger
+        render={<Button variant="ghost" size="icon-sm" aria-label="Edit announcement" onClick={() => setOpen(true)} />}
+      >
           <Edit2 className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -227,11 +226,11 @@ export function AdminAnnouncementsTable({
     <div className="space-y-4">
       <div className="flex justify-end">
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger>
-            <Button onClick={() => setCreateOpen(true)}>
+          <DialogTrigger
+            render={<Button onClick={() => setCreateOpen(true)} />}
+          >
               <Plus className="mr-2 h-4 w-4" />
               New announcement
-            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>

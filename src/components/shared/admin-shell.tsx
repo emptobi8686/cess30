@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -150,8 +151,9 @@ function AdminProfileMenu({ displayName }: { displayName?: string }) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button type="button" variant="ghost" className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted">
+      <DropdownMenuTrigger
+        render={<Button type="button" variant="ghost" className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted" />}
+      >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
             <UserRound className="h-4 w-4" />
           </div>
@@ -160,13 +162,14 @@ function AdminProfileMenu({ displayName }: { displayName?: string }) {
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Administrator</p>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-52" align="end" sideOffset={8}>
-        <DropdownMenuLabel>Admin account</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Admin account</DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={handleSignOut}
+          onClick={handleSignOut}
           disabled={isPending}
           variant="destructive"
           className="gap-2"
