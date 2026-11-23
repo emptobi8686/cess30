@@ -87,7 +87,7 @@ export async function createAnnouncement(
     if (publish && notifyStudents) {
       try {
         await enqueueAnnouncementNotifications(
-          { id: data.id, title, scope: scope as "all" | "department" | "level" | "course", course_id },
+          { id: data.id, title },
           sendPush
         );
       } catch (notificationError) {
@@ -195,12 +195,7 @@ export async function publishAnnouncement(
     if (notifyStudents) {
       try {
         await enqueueAnnouncementNotifications(
-          {
-            id: data.id,
-            title: data.title,
-            scope: data.scope,
-            course_id: data.course_id,
-          },
+          { id: data.id, title: data.title },
           sendPush
         );
       } catch (notificationError) {
