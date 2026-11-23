@@ -24,11 +24,22 @@ export default async function AdminVerificationsPage({
   const params = await Promise.resolve(searchParams ?? {});
   const activeStatus = toString(params.status) || "pending";
   const query = toString(params.q) || "";
+  const page = Math.max(1, Number.parseInt(toString(params.page) || "1", 10) || 1);
 
   const queue = await getVerificationQueue({
     status: activeStatus,
     search: query,
+    page,
   });
+
+  const pageHref = (target: number) => {
+    const search = new URLSearchParams();
+    if (activeStatus !== "all") search.set("status", activeStatus);
+    if (query) search.set("q", query);
+    if (target > 1) search.set("page", String(target));
+    const qs = search.toString();
+    return qs ? `/admin/verifications?${qs}` : "/admin/verifications";
+  };
 
   return (
     <AdminShell currentLabel="Verifications" displayName={undefined}>
@@ -160,6 +171,21 @@ export default async function AdminVerificationsPage({
                   </tbody>
                 </table>
               </div>
+            )}
+            {(queue.page > 1 || queue.hasNextPage) && (
+              <nav aria-label="Verification pages" className="flex items-center justify-between pt-2 text-sm">
+                {queue.page > 1 ? (
+                  <Link href={pageHref(queue.page - 1)} className="text-primary hover:underline">
+                    ← Previous
+                  </Link>
+                ) : <span />}
+                <span className="text-muted-foreground">Page {queue.page}</span>
+                {queue.hasNextPage ? (
+                  <Link href={pageHref(queue.page + 1)} className="text-primary hover:underline">
+                    Next →
+                  </Link>
+                ) : <span />}
+              </nav>
             )}
           </CardContent>
         </Card>
