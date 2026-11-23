@@ -1,5 +1,6 @@
 "use server";
 
+import { actionError } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/guards";
@@ -143,7 +144,7 @@ export async function createLectureSession(
       .select("id")
       .single();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("timetable", error, "lecture");
 
     revalidateTimetable();
     return { ok: true, data: { id: data.id } };
@@ -205,7 +206,7 @@ export async function updateLectureSession(
       .select("id")
       .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("timetable", error, "lecture");
     if (!data) return { ok: false, error: "Session not found or you do not have permission to edit it." };
 
     revalidateTimetable();
@@ -235,7 +236,7 @@ export async function cancelLectureSession(id: string): Promise<ActionResult> {
       .select("id")
       .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("timetable", error, "lecture");
     if (!data) return { ok: false, error: "Session not found or you do not have permission to cancel it." };
 
     revalidateTimetable();
@@ -258,7 +259,7 @@ export async function restoreLectureSession(id: string): Promise<ActionResult> {
       .eq("id", id)
       .maybeSingle();
 
-    if (fetchError) return { ok: false, error: fetchError.message };
+    if (fetchError) return actionError("timetable", fetchError, "lecture");
     if (!session) return { ok: false, error: "Session not found." };
 
     const existing = await fetchConflictsForDate(supabase, session.lecture_date);
@@ -292,7 +293,7 @@ export async function restoreLectureSession(id: string): Promise<ActionResult> {
       .select("id")
       .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("timetable", error, "lecture");
     if (!data) return { ok: false, error: "Session not found or you do not have permission to restore it." };
 
     revalidateTimetable();
@@ -318,7 +319,7 @@ export async function deleteLectureSession(id: string): Promise<ActionResult> {
       .select("id")
       .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("timetable", error, "lecture");
     if (!data) return { ok: false, error: "Session not found or you do not have permission to delete it." };
 
     revalidateTimetable();

@@ -1,5 +1,6 @@
 "use server";
 
+import { actionError } from "@/lib/errors";
 import { guardStudentAction } from "@/lib/auth/guards";
 
 import { revalidatePath } from "next/cache";
@@ -155,7 +156,7 @@ export async function createStudySession(
       .single();
 
     if (insertError) {
-      return { ok: false, error: insertError.message };
+      return actionError("study-planner", insertError, "study");
     }
 
     revalidatePath("/study-planner");
@@ -192,7 +193,7 @@ export async function createStudySession(
     .single();
 
   if (singleError) {
-    return { ok: false, error: singleError.message };
+    return actionError("study-planner", singleError, "study");
   }
 
   revalidatePath("/study-planner");
@@ -268,7 +269,7 @@ export async function updateStudySession(
       .eq("recurrence_id", existing.recurrence_id)
       .eq("user_id", user.id);
 
-    if (updateSeriesError) return { ok: false, error: updateSeriesError.message };
+    if (updateSeriesError) return actionError("study-planner", updateSeriesError, "study");
   } else {
     // Single session update
     const dateError = validateStudyDate(studyDate);
@@ -289,7 +290,7 @@ export async function updateStudySession(
       .eq("id", sessionId)
       .eq("user_id", user.id);
 
-    if (updateError) return { ok: false, error: updateError.message };
+    if (updateError) return actionError("study-planner", updateError, "study");
   }
 
   revalidatePath("/study-planner");
@@ -327,7 +328,7 @@ export async function deleteStudySession(
       .eq("recurrence_id", existing.recurrence_id)
       .eq("user_id", user.id);
 
-    if (deleteError) return { ok: false, error: deleteError.message };
+    if (deleteError) return actionError("study-planner", deleteError, "study");
   } else {
     const { error: deleteError } = await supabase
       .from("study_sessions")
@@ -335,7 +336,7 @@ export async function deleteStudySession(
       .eq("id", sessionId)
       .eq("user_id", user.id);
 
-    if (deleteError) return { ok: false, error: deleteError.message };
+    if (deleteError) return actionError("study-planner", deleteError, "study");
   }
 
   revalidatePath("/study-planner");
@@ -367,7 +368,7 @@ export async function toggleStudySessionCompleted(
     .eq("id", sessionId)
     .eq("user_id", user.id);
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return actionError("study-planner", error, "study");
 
   revalidatePath("/study-planner");
   revalidatePath("/dashboard");
@@ -405,7 +406,7 @@ export async function rescheduleStudySession(
     .eq("id", sessionId)
     .eq("user_id", user.id);
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return actionError("study-planner", error, "study");
 
   revalidatePath("/study-planner");
   revalidatePath("/dashboard");

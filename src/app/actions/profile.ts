@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerError, toUserError } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUserSession } from "@/lib/supabase/auth";
@@ -38,27 +39,14 @@ export async function submitMatricNumber(
   try {
     const supabase = await createServerSupabaseClient();
 
-    // Check if matric number is already used by another student profile
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("matric_number", matricNumber)
-      .neq("id", user.id)
-      .maybeSingle();
-
-    if (existing) {
-      return {
-        error: "This matriculation number is already registered to another account.",
-      };
-    }
-
     const { error } = await supabase
       .from("profiles")
       .update({ matric_number: matricNumber })
       .eq("id", user.id);
 
     if (error) {
-      return { error: error.message };
+      logServerError("profile.submitMatricNumber", error);
+      return { error: toUserError(error, "matric") };
     }
 
     revalidatePath("/dashboard");
@@ -104,7 +92,8 @@ export async function updateProfile(
       .eq("id", user.id);
 
     if (error) {
-      return { error: error.message };
+      logServerError("profile", error);
+      return { error: toUserError(error, "profile") };
     }
 
     revalidatePath("/settings/profile");
@@ -191,7 +180,8 @@ export async function uploadProfilePicture(
       });
 
     if (uploadError) {
-      return { error: uploadError.message ?? "Unable to upload profile picture." };
+      logServerError("profile", uploadError);
+      return { error: "Unable to upload profile picture." };
     }
 
     const { data: urlData } = supabase.storage
@@ -204,7 +194,8 @@ export async function uploadProfilePicture(
       .eq("id", user.id);
 
     if (updateError) {
-      return { error: updateError.message };
+      logServerError("profile", updateError);
+      return { error: toUserError(updateError, "profile") };
     }
 
     revalidatePath("/settings/profile");
@@ -250,7 +241,8 @@ export async function deleteProfilePicture(): Promise<CompleteProfileState> {
       .remove([objectPath]);
 
     if (removeError) {
-      return { error: removeError.message ?? "Unable to delete profile picture." };
+      logServerError("profile", removeError);
+      return { error: "Unable to delete profile picture." };
     }
 
     const { error: updateError } = await supabase
@@ -259,7 +251,8 @@ export async function deleteProfilePicture(): Promise<CompleteProfileState> {
       .eq("id", user.id);
 
     if (updateError) {
-      return { error: updateError.message };
+      logServerError("profile", updateError);
+      return { error: toUserError(updateError, "profile") };
     }
 
     revalidatePath("/settings/profile");

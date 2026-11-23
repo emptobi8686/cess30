@@ -1,5 +1,6 @@
 "use server";
 
+import { actionError } from "@/lib/errors";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/guards";
@@ -59,7 +60,7 @@ export async function createAnnouncement(
       .select("id")
       .single();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("announcements", error, "announcement");
 
     if (publish && notifyStudents) {
       try {
@@ -117,7 +118,7 @@ export async function updateAnnouncement(
       .select("id")
       .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("announcements", error, "announcement");
     if (!data) {
       return { ok: false, error: "Announcement not found or you do not have permission to edit it." };
     }
@@ -152,7 +153,7 @@ export async function publishAnnouncement(
       .select("id, title, scope, course_id")
       .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("announcements", error, "announcement");
     if (!data) return { ok: false, error: "Announcement not found or you do not have permission to publish it." };
 
     if (notifyStudents) {
@@ -196,7 +197,7 @@ export async function unpublishAnnouncement(id: string): Promise<ActionResult> {
       .select("id")
       .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("announcements", error, "announcement");
     if (!data) return { ok: false, error: "Announcement not found or you do not have permission to unpublish it." };
 
     revalidateAnnouncements();
@@ -221,7 +222,7 @@ export async function deleteAnnouncement(id: string): Promise<ActionResult> {
       .select("id")
       .maybeSingle();
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return actionError("announcements", error, "announcement");
     if (!data) {
       return { ok: false, error: "Announcement not found or you do not have permission to delete it." };
     }
