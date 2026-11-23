@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_NAME } from "@/lib/supabase/client";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 const ALLOWED_OTP_TYPES: EmailOtpType[] = [
   "signup",
@@ -16,19 +17,6 @@ function toOtpType(value: string | null): EmailOtpType {
   return ALLOWED_OTP_TYPES.includes(value as EmailOtpType)
     ? (value as EmailOtpType)
     : "email";
-}
-
-/**
- * Only allow same-origin, absolute-path redirects. Rejects protocol-relative
- * URLs and absolute URLs so a crafted link cannot turn this route into an open
- * redirect.
- */
-export function safeNextPath(value: string | null, fallback: string): string {
-  if (!value) return fallback;
-  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
-    return fallback;
-  }
-  return value;
 }
 
 function isRecoveryRequest(type: string | null, next: string | null): boolean {

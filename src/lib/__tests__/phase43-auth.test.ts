@@ -1,6 +1,7 @@
 import { describe, test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { safeNextPath, formatOAuthError } from "@/app/auth/confirm/route";
+import { formatOAuthError } from "@/app/auth/confirm/route";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 describe("Phase 4.3: safeNextPath destination validation", () => {
   test("allows valid relative root paths", () => {
