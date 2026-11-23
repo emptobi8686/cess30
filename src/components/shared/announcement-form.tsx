@@ -85,6 +85,7 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
         <Input
           id="title"
           name="title"
+              maxLength={160}
           required
           placeholder="e.g. Mid-semester test date"
           defaultValue={announcement?.title ?? ""}
@@ -97,6 +98,7 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
         <Textarea
           id="content"
           name="content"
+              maxLength={5000}
           required
           placeholder="Write the announcement message…"
           className="min-h-[120px]"

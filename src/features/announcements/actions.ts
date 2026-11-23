@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/guards";
 import { enqueueAnnouncementNotifications } from "@/lib/notifications/delivery";
-import { validateAnnouncementScope } from "@/features/announcements/validation";
+import { announcementSchema } from "@/features/announcements/validation";
 import type { ActionResult } from "@/types";
 
 function revalidateAnnouncements() {
@@ -26,19 +26,20 @@ export async function createAnnouncement(
     const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
-    const title = String(formData.get("title") ?? "").trim();
-    const content = String(formData.get("content") ?? "").trim();
-    const scope = String(formData.get("scope") ?? "").trim();
-    const course_id = String(formData.get("course_id") ?? "").trim() || null;
+    const parsed = announcementSchema.safeParse({
+      title: String(formData.get("title") ?? ""),
+      content: String(formData.get("content") ?? ""),
+      scope: String(formData.get("scope") ?? "").trim(),
+      course_id: String(formData.get("course_id") ?? ""),
+    });
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the announcement details." };
+    }
+    const { title, content, scope, course_id } = parsed.data;
     const publish = formData.get("publish") === "true";
     const notifyStudents = formData.get("notify_students") === "true";
     const sendPush = formData.get("send_push") === "true";
 
-    if (!title) return { ok: false, error: "Title is required." };
-    if (!content) return { ok: false, error: "Content is required." };
-
-    const scopeError = validateAnnouncementScope(scope, course_id);
-    if (scopeError) return { ok: false, error: scopeError };
 
     // published_at is an instant (timestamptz). It records when the row was
     // created; the student-facing RLS gate additionally requires
@@ -99,17 +100,16 @@ export async function updateAnnouncement(
     const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
-    const title = String(formData.get("title") ?? "").trim();
-    const content = String(formData.get("content") ?? "").trim();
-    const scope = String(formData.get("scope") ?? "").trim();
-    const course_id = String(formData.get("course_id") ?? "").trim() || null;
-
-    if (!title || !content) {
-      return { ok: false, error: "Title and content are required." };
+    const parsed = announcementSchema.safeParse({
+      title: String(formData.get("title") ?? ""),
+      content: String(formData.get("content") ?? ""),
+      scope: String(formData.get("scope") ?? "").trim(),
+      course_id: String(formData.get("course_id") ?? ""),
+    });
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the announcement details." };
     }
-
-    const scopeError = validateAnnouncementScope(scope, course_id);
-    if (scopeError) return { ok: false, error: scopeError };
+    const { title, content, scope, course_id } = parsed.data;
 
     const { data, error } = await supabase
       .from("announcements")
