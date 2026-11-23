@@ -36,6 +36,8 @@ import {
 } from "@/features/study-planner/queries";
 import type { VerificationStatus } from "@/types";
 import { getAcademicContext } from "@/features/academic/context";
+import { academicHeadline } from "@/features/academic/context-core";
+import { getActiveQuests, getUserXpSummary } from "@/features/quests/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +77,12 @@ export default async function DashboardPage() {
     getWeeklyStudySummary(user.id, weekInfo.weekStart, weekInfo.weekEnd),
     getRecentlyCompletedStudySessions(user.id, 3),
   ]);
-  const academic = await getAcademicContext();
+  const [academic, myQuests, myXp] = await Promise.all([
+    getAcademicContext(),
+    verificationStatus === "verified" ? getActiveQuests().then((q) => q.slice(0, 3)) : Promise.resolve([]),
+    verificationStatus === "verified" ? getUserXpSummary(user.id).catch(() => null) : Promise.resolve(null),
+  ]);
+  const headline = academicHeadline(academic);
 
   const firstName = displayName?.split(" ")[0];
 
@@ -85,7 +92,7 @@ export default async function DashboardPage() {
         <PageHeader
           eyebrow="Student overview"
           title={firstName ? `Welcome back, ${firstName}.` : "Your workspace is ready."}
-          description="Your Civil Engineering academic dashboard."
+          description={headline ?? "Your Civil Engineering academic dashboard."}
         />
 
         {/* Verification & Profile Status Banner */}
@@ -95,6 +102,41 @@ export default async function DashboardPage() {
           rejectionReason={profile?.verification_rejection_reason ?? null}
           placement={{ sessionLabel: academic.sessionLabel, status: academic.placementStatus }}
         />
+
+        {verificationStatus === "verified" ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">My quests</CardTitle>
+                <CardDescription>Open quests for your level and courses.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {myQuests.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No open quests right now.</p>
+                ) : (
+                  <ul className="divide-y divide-border/60 text-sm">
+                    {myQuests.map((quest) => (
+                      <li key={quest.id} className="flex items-center justify-between gap-3 py-2">
+                        <Link href="/quests" className="font-medium hover:underline">{quest.title}</Link>
+                        <Badge variant="secondary">{quest.xp_reward} XP</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">My XP</CardTitle>
+                <CardDescription>From approved quests.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-semibold" data-testid="my-xp">{myXp?.total_xp ?? 0}</p>
+                <p className="text-xs text-muted-foreground">{myXp?.quests_completed ?? 0} quests completed</p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
 
         {/* ───────────────────────────────────────────────────────────── */}
         {/* Study Planner Integration: Weekly Progress Summary */}

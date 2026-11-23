@@ -26,3 +26,10 @@ export function toAcademicContext(
     offeringIds: enrolments.map((e) => e.offering_id),
   };
 }
+
+/** Dashboard headline, e.g. "Level 200 · First Semester" (spec 5.2); null before any session exists. */
+export function academicHeadline(ctx: Pick<AcademicContext, "levelCode" | "semesterLabel" | "sessionLabel">): string | null {
+  const term = ctx.semesterLabel ?? ctx.sessionLabel;
+  if (!term) return null;
+  return `${ctx.levelCode ? `Level ${ctx.levelCode}` : "Level not set"} · ${term}`;
+}

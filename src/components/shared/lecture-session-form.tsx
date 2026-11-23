@@ -188,7 +188,7 @@ export function LectureSessionForm({ courses, session, onSuccess }: Props) {
       {success && <p className="text-sm text-primary">{success}</p>}
 
       <div className="flex flex-wrap gap-2 pt-1">
-        <Button type="submit" disabled={isPending || !courseId}>
+        <Button type="submit" disabled={isPending || (!courseId && !offeringId)}>
           {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

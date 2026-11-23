@@ -35,3 +35,11 @@ describe("toAcademicContext", () => {
     assert.equal(toAcademicContext({ level_code: "400", placement_status: "weird" }, [], null).placementStatus, "none");
   });
 });
+
+test("academicHeadline reads level and semester", async () => {
+  const { academicHeadline } = await import("../context-core");
+  assert.equal(academicHeadline({ levelCode: "200", semesterLabel: "First Semester", sessionLabel: "2026/2027" }), "Level 200 · First Semester");
+  assert.equal(academicHeadline({ levelCode: null, semesterLabel: "First Semester", sessionLabel: "2026/2027" }), "Level not set · First Semester");
+  assert.equal(academicHeadline({ levelCode: "300", semesterLabel: null, sessionLabel: "2026/2027" }), "Level 300 · 2026/2027");
+  assert.equal(academicHeadline({ levelCode: null, semesterLabel: null, sessionLabel: null }), null);
+});

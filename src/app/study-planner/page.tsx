@@ -5,7 +5,7 @@ import { requireUserSession } from "@/lib/supabase/auth";
 import { getLagosNow, isValidDateString } from "@/lib/dates";
 import { loadedRangeFor, parsePlannerView } from "@/features/study-planner/range";
 import {
-  getCourses,
+  getMyCourses,
   getStudySessionsForDateRange,
   getOfficialLecturesForDateRange,
 } from "@/features/study-planner/queries";
@@ -25,7 +25,7 @@ export default async function StudyPlannerPage(props: PageProps<"/study-planner"
   const loadedRange = loadedRangeFor(anchorDate);
 
   const [courses, studySessions, lectures] = await Promise.all([
-    getCourses(),
+    getMyCourses(user.id),
     getStudySessionsForDateRange(user.id, loadedRange.start, loadedRange.end),
     getOfficialLecturesForDateRange(loadedRange.start, loadedRange.end),
   ]);
