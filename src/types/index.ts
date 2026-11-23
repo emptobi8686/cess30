@@ -216,6 +216,10 @@ export type XpSummary = {
 
 export type LeaderboardPeriod = "all-time" | "weekly" | "monthly";
 
+/**
+ * Row returned by public.get_leaderboard(). total_xp, quests_completed and rank are
+ * PostgreSQL bigint values; PostgREST serialises them as JSON numbers.
+ */
 export type LeaderboardEntry = {
   user_id: string;
   full_name: string;
