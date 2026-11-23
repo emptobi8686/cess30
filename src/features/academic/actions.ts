@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { semesterSchema, sessionSchema } from "@/features/academic/validation";
+import { LEVEL_CODES, semesterSchema, sessionSchema } from "@/features/academic/validation";
+import { bulkOfferingMessage, OFFERING_STATUSES, selectedCourseIds } from "@/features/academic/offerings";
 import { errorState, successState, type ActionState } from "@/lib/action-state";
 import { accessErrorMessage, requireAdmin } from "@/lib/auth/guards";
 import { logServerError } from "@/lib/errors";
@@ -94,4 +95,58 @@ export async function setCurrentSessionAction(_previous: ActionState, formData: 
 
 export async function setCurrentSemesterAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   return setCurrent("set_current_semester", "p_semester_id", String(formData.get("semesterId") ?? ""), "The semester");
+}
+
+export async function bulkCreateOfferingsAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requireAdmin();
+    const semesterId = String(formData.get("semesterId") ?? "");
+    const levelCode = String(formData.get("levelCode") ?? "");
+    const courseIds = selectedCourseIds(formData);
+    if (!UUID.test(semesterId)) return errorState("Choose a semester.");
+    if (!LEVEL_CODES.includes(levelCode as (typeof LEVEL_CODES)[number])) return errorState("Choose a level.");
+    if (courseIds.length === 0) return errorState("Select at least one course.");
+
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("course_offerings")
+      .upsert(
+        courseIds.map((course_id) => ({ course_id, semester_id: semesterId, level_code: levelCode })),
+        { onConflict: "course_id,semester_id,level_code", ignoreDuplicates: true }
+      )
+      .select("id");
+    if (error) {
+      logServerError("academic.bulkCreateOfferings", error);
+      return errorState(dbMessage(error, "The offerings could not be created."));
+    }
+    revalidateAcademic();
+    return successState(bulkOfferingMessage(courseIds.length, data?.length ?? 0));
+  } catch (error) {
+    return errorState(accessErrorMessage(error, "The offerings could not be created."));
+  }
+}
+
+export async function updateOfferingStatusAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requireAdmin();
+    const offeringId = String(formData.get("offeringId") ?? "");
+    const status = String(formData.get("status") ?? "");
+    if (!UUID.test(offeringId)) return errorState("Invalid offering.");
+    if (!OFFERING_STATUSES.includes(status as (typeof OFFERING_STATUSES)[number])) return errorState("Choose a valid status.");
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("course_offerings")
+      .update({ status })
+      .eq("id", offeringId)
+      .select("id")
+      .maybeSingle();
+    if (error || !data) {
+      if (error) logServerError("academic.updateOfferingStatus", error);
+      return errorState("The offering could not be updated.");
+    }
+    revalidateAcademic();
+    return successState(`Status set to ${status}.`);
+  } catch (error) {
+    return errorState(accessErrorMessage(error, "The offering could not be updated."));
+  }
 }

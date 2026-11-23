@@ -37,3 +37,28 @@ export function currentLabels(sessions: AcademicSession[]): { session: string | 
   const semester = session?.semesters.find((s) => s.is_current) ?? null;
   return { session: session?.label ?? null, semester: semester?.label ?? null };
 }
+
+export type OfferingRow = {
+  id: string;
+  level_code: string;
+  status: string;
+  semester_id: string;
+  courses: { course_code: string; course_title: string; credit_units: number } | null;
+};
+
+export async function getOfferings(filter: { semesterId: string; levelCode?: string | null }): Promise<OfferingRow[]> {
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
+    .from("course_offerings")
+    .select("id, level_code, status, semester_id, courses ( course_code, course_title, credit_units )")
+    .eq("semester_id", filter.semesterId)
+    .order("level_code");
+  if (filter.levelCode) query = query.eq("level_code", filter.levelCode);
+  const { data, error } = await query;
+  if (error) throw new Error("Could not load course offerings.");
+  return ((data ?? []) as unknown as OfferingRow[]).sort((a, b) =>
+    a.level_code === b.level_code
+      ? (a.courses?.course_code ?? "").localeCompare(b.courses?.course_code ?? "")
+      : a.level_code.localeCompare(b.level_code)
+  );
+}
