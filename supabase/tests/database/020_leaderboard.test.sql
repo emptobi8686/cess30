@@ -1,7 +1,7 @@
 -- BP-004: get_leaderboard must return rows (bigint outputs), validate periods,
 -- and rank only verified, non-admin students.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(6);
 
 select tests.create_user('lb-a@test.local', '{"full_name":"Ada A","matric_number":"200000001"}') as a \gset

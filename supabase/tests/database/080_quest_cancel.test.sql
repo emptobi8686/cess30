@@ -1,6 +1,6 @@
 -- BP-029: students can cancel their own pending submissions and resubmit afterwards.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(6);
 
 select tests.create_user('qc-admin@test.local', '{"full_name":"Admin","matric_number":"800000001"}') as adm \gset

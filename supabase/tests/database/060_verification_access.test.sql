@@ -1,7 +1,7 @@
 -- BP-005 (database layer): only verified students may create or change study sessions
 -- and quest submissions; every status may still read and delete its own data.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(6);
 
 select tests.create_user('va-pending@test.local', '{"full_name":"Pending","matric_number":"600000001"}') as pen \gset

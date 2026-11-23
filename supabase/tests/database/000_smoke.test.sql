@@ -1,5 +1,5 @@
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(6);
 select has_table('public', 'profiles', 'profiles table exists');
 select has_table('public', 'quests', 'quests table exists (migration 018)');

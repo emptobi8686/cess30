@@ -1,5 +1,5 @@
 -- Shared pgTAP helpers. Include at the top of every test file, inside its transaction:
---   begin; \ir _helpers.sql
+--   begin; \ir _helpers.psql
 -- Everything here is created inside the test transaction and rolled back with it.
 -- Runner note: works with pg_prove (scripts/db-test-local.sh) and `supabase test db`,
 -- both of which execute files through psql, so `\ir` is supported.

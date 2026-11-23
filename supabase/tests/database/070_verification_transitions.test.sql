@@ -1,6 +1,6 @@
 -- BP-007: rejected students can resubmit; admins can suspend, reinstate and reopen.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(11);
 
 select tests.create_user('vt-admin@test.local', '{"full_name":"Admin","matric_number":"700000001"}') as adm \gset

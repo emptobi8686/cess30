@@ -1,6 +1,6 @@
 -- BP-001: verification history must not be reachable by anon, and students see only their own rows.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(8);
 
 select tests.create_user('student-a@test.local', '{"full_name":"Student A","matric_number":"100000001"}') as student_a \gset

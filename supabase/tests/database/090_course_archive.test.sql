@@ -1,6 +1,6 @@
 -- BP-030: courses can be archived; referenced courses cannot be deleted.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(5);
 
 select tests.create_user('ca-admin@test.local', '{"full_name":"Admin","matric_number":"900100001"}') as adm \gset

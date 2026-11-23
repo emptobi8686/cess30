@@ -1,6 +1,6 @@
 -- BP-016 / BP-017 / BP-018 / BP-046: profile identity guard.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(12);
 
 select tests.create_user('pg-admin@test.local', '{"full_name":"Guard Admin","matric_number":"400000001"}') as adm \gset

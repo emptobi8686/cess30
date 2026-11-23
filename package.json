@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "db:test": "supabase test db",
+    "db:test": "supabase test db supabase/tests/database",
     "db:test:local": "scripts/db-test-local.sh",
     "e2e": "playwright test",
     "db:types": "supabase gen types typescript --local > src/types/database.ts"

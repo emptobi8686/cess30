@@ -1,6 +1,6 @@
 -- BP-050: announcement title and content have database length limits.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(3);
 
 select tests.create_user('al-admin@test.local', '{"full_name":"Admin","matric_number":"910000001"}') as adm \gset

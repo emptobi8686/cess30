@@ -1,6 +1,6 @@
 -- BP-043 / BP-044 and dead code: function security attributes.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(9);
 
 select is(

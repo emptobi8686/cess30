@@ -1,7 +1,7 @@
 -- BP-014 / BP-015 / BP-008: quest submissions can only be created as honest pending
 -- rows for open quests; XP can only be awarded through review; quests record their author.
 begin;
-\ir _helpers.sql
+\ir _helpers.psql
 select plan(9);
 
 select tests.create_user('q-admin@test.local', '{"full_name":"Quest Admin","matric_number":"300000001"}') as adm \gset
