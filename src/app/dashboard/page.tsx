@@ -4,7 +4,6 @@ import {
   Megaphone,
   BookOpen,
   CheckCircle2,
-  Clock,
   ArrowRight,
   TrendingUp,
   MapPin,
@@ -23,7 +22,6 @@ import {
   formatTime,
   formatTimestamp,
   getWeekDates,
-  getLagosNow,
 } from "@/lib/dates";
 import {
   getNextUpcomingSession,
@@ -43,7 +41,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const user = await requireUserSession();
   const supabase = await createServerSupabaseClient();
-  const { date: todayDate } = getLagosNow();
+
   const weekInfo = getWeekDates();
 
   // Fetch student profile including matriculation and verification status

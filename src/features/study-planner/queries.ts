@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getLagosDateString, getLagosNow, timeToMinutes } from "@/lib/dates";
+import { getLagosDateString, getLagosNow } from "@/lib/dates";
 import type {
   Course,
   StudySessionWithCourse,

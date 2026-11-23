@@ -5,5 +5,5 @@ export const siteConfig = {
     "A digital academic companion for Civil Engineering students at the University of Lagos.",
   location: "University of Lagos • Civil Engineering",
   foundation: "200 Level foundation",
-  url: "https://blueprint.local",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 } as const;

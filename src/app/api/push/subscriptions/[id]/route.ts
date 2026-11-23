@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { parseDeviceId } from "@/lib/notifications/device-id";
 
 const requestSchema = z.object({
   currentEndpoint: z.string().url().max(2048).nullable(),
@@ -42,7 +43,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
 
-  const { id } = await context.params;
+  const id = parseDeviceId((await context.params).id);
+  if (!id) return NextResponse.json({ error: "Device not found." }, { status: 404 });
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("push_subscriptions")

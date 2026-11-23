@@ -98,11 +98,18 @@ export async function POST(request: NextRequest) {
     console.error("Could not check push subscription.", { code: existingError.code });
     return NextResponse.json({ error: "Could not register this device." }, { status: 500 });
   }
+  // A browser endpoint belongs to whoever is signed in on that device now: when a shared
+  // device changes hands, move the subscription instead of blocking it (BP-047).
   if (existing && existing.user_id !== user.id) {
-    return NextResponse.json({ error: "This device subscription is already registered." }, { status: 409 });
+    const { error: releaseError } = await admin.from("push_subscriptions").delete().eq("id", existing.id);
+    if (releaseError) {
+      console.error("Could not release push subscription.", { code: releaseError.code });
+      return NextResponse.json({ error: "Could not register this device." }, { status: 500 });
+    }
   }
+  const owned = existing && existing.user_id === user.id ? existing : null;
 
-  if (!existing) {
+  if (!owned) {
     const { count, error: countError } = await admin
       .from("push_subscriptions")
       .select("id", { count: "exact", head: true })
@@ -127,11 +134,11 @@ export async function POST(request: NextRequest) {
     device_label: parsed.data.deviceLabel,
     last_used_at: new Date().toISOString(),
   };
-  const { error: saveError } = existing
+  const { error: saveError } = owned
     ? await admin
         .from("push_subscriptions")
         .update(subscriptionRow)
-        .eq("id", existing.id)
+        .eq("id", owned.id)
         .eq("user_id", user.id)
     : await admin.from("push_subscriptions").insert(subscriptionRow);
 
