@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ReviewForms } from "./_components/review-forms";
 import { getVerificationQueue } from "@/features/verification/queries";
 import { getVerificationStatusLabel } from "@/lib/verification";
+import { formatTimestamp } from "@/lib/dates";
 
 function toString(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -157,7 +158,7 @@ export default async function AdminVerificationsPage({
                           </Badge>
                         </td>
                         <td className="px-2 py-3 text-muted-foreground">
-                          {new Date(submission.created_at).toLocaleDateString()} 
+                          {formatTimestamp(submission.created_at)} 
                         </td>
                         <td className="px-2 py-3">
                           <ReviewForms
