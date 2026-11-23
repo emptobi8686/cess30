@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { submitMatricNumber, type CompleteProfileState } from "@/app/actions/profile";
+import { requestReverificationAction } from "@/features/verification/student-actions";
+import { IDLE_ACTION_STATE } from "@/features/verification/action-state";
 import type { VerificationStatus } from "@/types";
 
 type Props = {
@@ -96,25 +98,7 @@ export function VerificationBanner({
   }
 
   if (verificationStatus === "rejected") {
-    return (
-      <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive">
-        <ShieldAlert className="h-5 w-5 shrink-0 mt-0.5" />
-        <div className="text-sm">
-          <p className="font-semibold">Student Verification Rejected</p>
-          <p className="mt-0.5 text-xs">
-            Your student verification request was not approved. Please correct the issue below and resubmit your matriculation number.
-          </p>
-          {rejectionReason ? (
-            <p className="mt-2 rounded-md border border-destructive/20 bg-background/60 px-2.5 py-2 text-xs text-foreground">
-              <span className="font-semibold">Reason:</span> {rejectionReason}
-            </p>
-          ) : null}
-          <p className="mt-2 text-xs text-muted-foreground">
-            Update your matriculation number in the profile settings and submit it again for review.
-          </p>
-        </div>
-      </div>
-    );
+    return <RejectedBanner matricNumber={matricNumber} rejectionReason={rejectionReason ?? null} />;
   }
 
   if (verificationStatus === "suspended") {
@@ -135,3 +119,59 @@ export function VerificationBanner({
   return null;
 }
 
+
+function RejectedBanner({
+  matricNumber,
+  rejectionReason,
+}: {
+  matricNumber: string;
+  rejectionReason: string | null;
+}) {
+  const [state, formAction, isPending] = useActionState(
+    requestReverificationAction,
+    IDLE_ACTION_STATE
+  );
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive">
+      <ShieldAlert className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+      <div className="w-full text-sm">
+        <p className="font-semibold">Student verification was not approved</p>
+        {rejectionReason ? (
+          <p className="mt-2 rounded-md border border-destructive/20 bg-background/60 px-2.5 py-2 text-xs text-foreground">
+            <span className="font-semibold">Reason:</span> {rejectionReason}
+          </p>
+        ) : null}
+        <p className="mt-2 text-xs text-foreground">
+          Check your matriculation number, correct it if needed, and resubmit it for review.
+        </p>
+        <form action={formAction} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex-1 space-y-1.5">
+            <Label htmlFor="resubmitMatric" className="text-xs text-foreground">
+              Matriculation number
+            </Label>
+            <Input
+              id="resubmitMatric"
+              name="matricNumber"
+              defaultValue={matricNumber}
+              required
+              disabled={isPending}
+              className="max-w-sm bg-background text-foreground"
+            />
+          </div>
+          <Button type="submit" disabled={isPending} className="h-9">
+            {isPending ? "Resubmitting…" : "Resubmit for review"}
+          </Button>
+        </form>
+        {state.message ? (
+          <p
+            role="status"
+            className={state.status === "error" ? "mt-2 text-xs text-destructive" : "mt-2 text-xs text-primary"}
+          >
+            {state.message}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}

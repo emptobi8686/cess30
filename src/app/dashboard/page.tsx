@@ -48,7 +48,7 @@ export default async function DashboardPage() {
   // Fetch student profile including matriculation and verification status
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, nickname, matric_number, avatar_url, verification_status")
+    .select("full_name, nickname, matric_number, avatar_url, verification_status, verification_rejection_reason")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -91,6 +91,7 @@ export default async function DashboardPage() {
         <VerificationBanner
           matricNumber={matricNumber}
           verificationStatus={verificationStatus}
+          rejectionReason={profile?.verification_rejection_reason ?? null}
         />
 
         {/* ───────────────────────────────────────────────────────────── */}

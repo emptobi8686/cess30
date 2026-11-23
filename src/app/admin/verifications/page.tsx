@@ -1,15 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Search, XCircle } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  approveVerificationAction,
-  rejectVerificationAction,
-} from "@/features/verification/actions";
+import { ReviewForms } from "./_components/review-forms";
 import { getVerificationQueue } from "@/features/verification/queries";
 import { getVerificationStatusLabel } from "@/lib/verification";
 
@@ -101,7 +97,7 @@ export default async function AdminVerificationsPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
-              {(["pending", "verified", "rejected", "all"] as const).map((status) => {
+              {(["pending", "verified", "rejected", "suspended", "all"] as const).map((status) => {
                 const isActive = activeStatus === status;
                 const href = status === "all" ? "/admin/verifications" : `/admin/verifications?status=${status}`;
                 const queryString = query ? `&q=${encodeURIComponent(query)}` : "";
@@ -153,37 +149,11 @@ export default async function AdminVerificationsPage({
                           {new Date(submission.created_at).toLocaleDateString()} 
                         </td>
                         <td className="px-2 py-3">
-                          <div className="flex flex-col gap-3">
-                            <form action={approveVerificationAction} className="space-y-2">
-                              <input type="hidden" name="profileId" value={submission.id} />
-                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <input type="checkbox" name="confirmed" required />
-                                Confirm approval
-                              </label>
-                              <Button type="submit" size="sm" className="gap-2">
-                                <CheckCircle2 className="h-4 w-4" />
-                                Approve
-                              </Button>
-                            </form>
-
-                            <form action={rejectVerificationAction} className="space-y-2">
-                              <input type="hidden" name="profileId" value={submission.id} />
-                              <Textarea
-                                name="reason"
-                                rows={2}
-                                placeholder="Reason for rejection (minimum 12 characters)"
-                                required
-                              />
-                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <input type="checkbox" name="confirmed" required />
-                                Confirm rejection
-                              </label>
-                              <Button type="submit" variant="destructive" size="sm" className="gap-2">
-                                <XCircle className="h-4 w-4" />
-                                Reject
-                              </Button>
-                            </form>
-                          </div>
+                          <ReviewForms
+                            profileId={submission.id}
+                            status={submission.verification_status}
+                            hasMatric={Boolean(submission.matric_number)}
+                          />
                         </td>
                       </tr>
                     ))}
