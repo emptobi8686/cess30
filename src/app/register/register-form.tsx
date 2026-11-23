@@ -113,7 +113,7 @@ export function RegisterForm() {
           <div className="space-y-1">
             <CardTitle className="text-2xl font-bold tracking-tight">Create student account</CardTitle>
             <CardDescription>
-              Registration is designated for University of Lagos 200-level Civil Engineering students. Student accounts require administrator verification.
+              Registration is for University of Lagos Civil Engineering students. You choose your level after verification. Student accounts require administrator verification.
             </CardDescription>
           </div>
         </CardHeader>

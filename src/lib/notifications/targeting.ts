@@ -11,6 +11,13 @@ type CourseAudience = {
   level: string;
 };
 
+
+/**
+ * Legacy "level" announcements target the original pilot cohort. P6 replaces this with
+ * audience-based targeting (offerings and confirmed placements) and removes the constant.
+ */
+const LEGACY_LEVEL_SCOPE = "200";
+
 export function getAnnouncementRecipients(
   profiles: RecipientProfile[],
   scope: Announcement["scope"],
@@ -20,7 +27,7 @@ export function getAnnouncementRecipients(
     return profiles.filter((profile) => profile.department === "Civil Engineering");
   }
   if (scope === "level") {
-    return profiles.filter((profile) => profile.level === "200");
+    return profiles.filter((profile) => profile.level === LEGACY_LEVEL_SCOPE);
   }
   if (scope === "course") {
     if (!course) throw new Error("Course-scoped announcements require a course.");

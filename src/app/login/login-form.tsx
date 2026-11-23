@@ -106,7 +106,7 @@ export function LoginForm({ initialError = null, initialMessage = null }: Props)
           <div className="space-y-1">
             <CardTitle className="text-2xl font-bold tracking-tight">Student access</CardTitle>
             <CardDescription>
-              Sign in to your BLUEPRINT Civil Engineering 200-level pilot workspace.
+              Sign in to your BLUEPRINT Civil Engineering workspace.
             </CardDescription>
           </div>
         </CardHeader>

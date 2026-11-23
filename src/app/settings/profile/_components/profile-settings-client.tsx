@@ -68,6 +68,7 @@ export function ProfileSettingsClient({
       currentLabel="Profile"
       displayName={displayName}
       avatarUrl={avatarUrl}
+      academic={academic}
     >
       <div className="space-y-6">
         <PageHeader

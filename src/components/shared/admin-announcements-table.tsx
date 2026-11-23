@@ -27,7 +27,7 @@ import type { Announcement, Course } from "@/types";
 const SCOPE_LABELS: Record<Announcement["scope"], string> = {
   all: "All",
   department: "Department",
-  level: "200 Level",
+  level: "Level",
   course: "Course",
 };
 

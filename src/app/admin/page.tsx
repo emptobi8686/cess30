@@ -55,7 +55,7 @@ export default async function AdminOverviewPage() {
           <StatCard
             label="Courses"
             value={String(stats.courses)}
-            description="200-level catalogue"
+            description="Course catalogue"
             tone="default"
           />
           <StatCard

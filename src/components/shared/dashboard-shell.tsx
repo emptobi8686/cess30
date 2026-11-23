@@ -1,5 +1,7 @@
 "use client";
 
+import { cohortLabel, type ShellAcademic } from "./cohort-label";
+
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -42,7 +44,8 @@ const navItems = [
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
-function SidebarNav({ currentLabel }: { currentLabel: string }) {
+function SidebarNav({ currentLabel, academic }: { currentLabel: string; academic?: ShellAcademic }) {
+  const cohort = cohortLabel(academic);
   return (
     <aside className="hidden w-72 shrink-0 border-r border-border/80 bg-card/80 p-5 lg:block">
       <div className="flex items-center gap-3 border-b border-border/80 pb-5">
@@ -77,8 +80,8 @@ function SidebarNav({ currentLabel }: { currentLabel: string }) {
       </nav>
 
       <div className="mt-8 rounded-2xl border border-dashed border-border bg-muted/30 p-4">
-        <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Pilot cohort</p>
-        <p className="mt-3 text-lg font-semibold text-foreground">200 Level</p>
+        <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Your cohort</p>
+        {cohort ? <p className="mt-3 text-lg font-semibold text-foreground">{cohort}</p> : null}
         <p className="mt-1 text-sm text-muted-foreground">Civil Engineering</p>
       </div>
     </aside>
@@ -204,16 +207,19 @@ export function DashboardShell({
   currentLabel,
   displayName,
   avatarUrl,
+  academic,
 }: {
   children: React.ReactNode;
   currentLabel: string;
   displayName?: string;
   avatarUrl?: string | null;
+  /** Level and session for the sidebar cohort card; omitted pages show the department only. */
+  academic?: ShellAcademic;
 }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex max-w-[1600px]">
-        <SidebarNav currentLabel={currentLabel} />
+        <SidebarNav currentLabel={currentLabel} academic={academic} />
 
         <main className="flex min-h-screen flex-1 flex-col">
           <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-sm">

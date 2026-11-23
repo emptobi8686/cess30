@@ -43,7 +43,7 @@ export function VerificationBanner({
             </CardTitle>
           </div>
           <CardDescription className="text-sm text-muted-foreground">
-            You are signed in with Google. To associate your account with the Civil Engineering 200-level pilot and submit your profile for admin verification, please provide your UNILAG matriculation number.
+            You are signed in with Google. To link your account to UNILAG Civil Engineering and submit your profile for admin verification, please provide your UNILAG matriculation number.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -94,7 +94,7 @@ export function VerificationBanner({
         <div className="text-sm">
           <p className="font-semibold">Student Verification Pending</p>
           <p className="mt-0.5 text-xs text-amber-800/90 dark:text-amber-300/90">
-            Your matriculation details ({matricNumber}) have been submitted and are awaiting administrator verification for the 200-level Civil Engineering pilot.
+            Your matriculation details ({matricNumber}) have been submitted and are awaiting administrator verification.
           </p>
         </div>
       </div>

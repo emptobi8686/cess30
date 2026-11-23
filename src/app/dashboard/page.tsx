@@ -80,12 +80,12 @@ export default async function DashboardPage() {
   const firstName = displayName?.split(" ")[0];
 
   return (
-    <DashboardShell currentLabel="Overview" displayName={displayName} avatarUrl={avatarUrl}>
+    <DashboardShell currentLabel="Overview" displayName={displayName} avatarUrl={avatarUrl} academic={academic}>
       <div className="space-y-6">
         <PageHeader
           eyebrow="Student overview"
           title={firstName ? `Welcome back, ${firstName}.` : "Your workspace is ready."}
-          description="Your academic dashboard for the 200-level Civil Engineering pilot."
+          description="Your Civil Engineering academic dashboard."
         />
 
         {/* Verification & Profile Status Banner */}

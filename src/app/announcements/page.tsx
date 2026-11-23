@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const SCOPE_LABELS: Record<Announcement["scope"], string> = {
   all: "General",
   department: "Department",
-  level: "200 Level",
+  level: "Level",
   course: "Course",
 };
 
