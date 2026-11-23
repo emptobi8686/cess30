@@ -43,3 +43,25 @@ describe("dropdown menu usage", () => {
     }
   });
 });
+
+describe("link semantics (BP-036)", () => {
+  test("no <Link> wraps a <Button> (use Button render={<Link/>})", () => {
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      assert.ok(!/<Link\b[^>]*>\s*<Button\b/.test(source), `${file}: <Link> wraps a <Button>`);
+    }
+  });
+});
+
+describe("Base UI Button rendering links", () => {
+  test("Button render={<Link/>} declares nativeButton={false}", () => {
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      for (const match of source.matchAll(/<Button\b[^]*?render=\{<Link/g)) {
+        const tag = match[0];
+        if (tag.includes("<Button", 1)) continue; // matched across elements
+        assert.ok(tag.includes("nativeButton={false}"), `${file}: Button renders a Link without nativeButton={false}`);
+      }
+    }
+  });
+});

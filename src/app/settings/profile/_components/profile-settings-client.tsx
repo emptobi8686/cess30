@@ -241,9 +241,7 @@ export function ProfileSettingsClient({
         </div>
 
         <div className="mt-4">
-          <Link href="/settings">
-            <Button variant="outline">← Back to settings</Button>
-          </Link>
+          <Button variant="outline" nativeButton={false} render={<Link href="/settings" />}>← Back to settings</Button>
         </div>
       </div>
     </DashboardShell>

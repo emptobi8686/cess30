@@ -7,6 +7,7 @@ import {
   ChevronDown,
   LayoutGrid,
   LogOut,
+  Medal,
   Megaphone,
   Menu,
   NotebookPen,
@@ -37,7 +38,7 @@ const navItems = [
   { label: "Study Planner", href: "/study-planner", icon: NotebookPen },
   { label: "Announcements", href: "/announcements", icon: Megaphone },
   { label: "Quests", href: "/quests", icon: Trophy },
-  { label: "Leaderboard", href: "/leaderboard", icon: LayoutGrid },
+  { label: "Leaderboard", href: "/leaderboard", icon: Medal },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

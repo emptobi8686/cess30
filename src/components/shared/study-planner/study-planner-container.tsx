@@ -167,9 +167,13 @@ export function StudyPlannerContainer({
 
   return (
     <div className="space-y-6">
-      {notifications.length > 0 && (
-        <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
-          {notifications.map((n) => (
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"
+      >
+        {notifications.length > 0 &&
+          notifications.map((n) => (
             <div
               key={n.id}
               className={cn(
@@ -196,11 +200,13 @@ export function StudyPlannerContainer({
                 variant="outline"
                 onClick={() => removeNotification(n.id)}
                 className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
-              />
+                aria-label="Dismiss message"
+              >
+                <X className="h-3 w-3" aria-hidden />
+              </Button>
             </div>
           ))}
-        </div>
-      )}
+      </div>
 
       {/* Top action bar: View mode switcher & Plan button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

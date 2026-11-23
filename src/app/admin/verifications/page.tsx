@@ -51,12 +51,10 @@ export default async function AdminVerificationsPage({
             </p>
             <h2 className="mt-1 text-2xl font-semibold">Student matriculation review</h2>
           </div>
-          <Link href="/admin">
-            <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" nativeButton={false} render={<Link href="/admin" />}>
               <ArrowLeft className="h-4 w-4" />
               Back to overview
             </Button>
-          </Link>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -110,15 +108,17 @@ export default async function AdminVerificationsPage({
             <div className="flex flex-wrap gap-2">
               {(["pending", "verified", "rejected", "suspended", "all"] as const).map((status) => {
                 const isActive = activeStatus === status;
-                const href = status === "all" ? "/admin/verifications" : `/admin/verifications?status=${status}`;
-                const queryString = query ? `&q=${encodeURIComponent(query)}` : "";
+                const filterParams = new URLSearchParams();
+                if (status !== "all") filterParams.set("status", status);
+                if (query) filterParams.set("q", query);
+                const filterHref = filterParams.size
+                  ? `/admin/verifications?${filterParams.toString()}`
+                  : "/admin/verifications";
 
                 return (
-                  <Link key={status} href={`${href}${queryString}`}>
-                    <Button type="button" variant={isActive ? "default" : "outline"} size="sm" className="capitalize">
+                  <Button key={status} variant={isActive ? "default" : "outline"} size="sm" className="capitalize" nativeButton={false} render={<Link href={filterHref} />}>
                       {status === "all" ? "All" : getVerificationStatusLabel(status)}
                     </Button>
-                  </Link>
                 );
               })}
             </div>

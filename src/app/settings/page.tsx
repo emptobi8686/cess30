@@ -30,7 +30,7 @@ export default async function SettingsPage() {
                 </p>
               </div>
             </div>
-            <Button render={<Link href="/settings/profile" />}>
+            <Button nativeButton={false} render={<Link href="/settings/profile" />}>
               Open profile settings
             </Button>
           </section>
@@ -45,7 +45,7 @@ export default async function SettingsPage() {
                 </p>
               </div>
             </div>
-            <Button render={<Link href="/settings/notifications" />}>
+            <Button nativeButton={false} render={<Link href="/settings/notifications" />}>
               Manage notifications
             </Button>
           </section>

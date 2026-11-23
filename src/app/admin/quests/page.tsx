@@ -84,12 +84,10 @@ export default async function AdminQuestsPage({
             </p>
             <h2 className="mt-1 text-2xl font-semibold">Quests &amp; submissions</h2>
           </div>
-          <Link href="/admin">
-            <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" nativeButton={false} render={<Link href="/admin" />}>
               <ArrowLeft className="h-4 w-4" />
               Back to overview
             </Button>
-          </Link>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -171,26 +169,18 @@ export default async function AdminQuestsPage({
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle className="text-base">Submission review</CardTitle>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Link href="/admin/quests">
-                  <Button type="button" variant={activeStatus === "all" ? "default" : "outline"} size="sm">
+                <Button variant={activeStatus === "all" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests" />}>
                     All
                   </Button>
-                </Link>
-                <Link href="/admin/quests?status=pending">
-                  <Button type="button" variant={activeStatus === "pending" ? "default" : "outline"} size="sm">
+                <Button variant={activeStatus === "pending" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=pending" />}>
                     Pending
                   </Button>
-                </Link>
-                <Link href="/admin/quests?status=approved">
-                  <Button type="button" variant={activeStatus === "approved" ? "default" : "outline"} size="sm">
+                <Button variant={activeStatus === "approved" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=approved" />}>
                     Approved
                   </Button>
-                </Link>
-                <Link href="/admin/quests?status=rejected">
-                  <Button type="button" variant={activeStatus === "rejected" ? "default" : "outline"} size="sm">
+                <Button variant={activeStatus === "rejected" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=rejected" />}>
                     Rejected
                   </Button>
-                </Link>
               </div>
             </div>
           </CardHeader>

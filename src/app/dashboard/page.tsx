@@ -7,6 +7,7 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
+  MapPin,
 } from "lucide-react";
 import { DashboardShell } from "@/components/shared/dashboard-shell";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -285,7 +286,9 @@ export default async function DashboardPage() {
                         </p>
                         {study.location ? (
                           <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                            📍 {study.location}
+                            <MapPin className="mr-1 inline h-3 w-3" aria-hidden />
+                            <span className="sr-only">Location: </span>
+                            {study.location}
                           </p>
                         ) : null}
                       </div>
