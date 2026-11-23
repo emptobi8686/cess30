@@ -1,7 +1,7 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { requireAdmin } from "@/lib/auth/guards";
 import type {
   AppNotification,
   NotificationPreferences,
@@ -58,8 +58,7 @@ export async function getNotifications(
 }
 
 export async function getNotificationDeliveryStats() {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") throw new Error("Administrator access required.");
+  await requireAdmin();
 
   const admin = createAdminSupabaseClient();
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

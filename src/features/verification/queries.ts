@@ -1,5 +1,4 @@
-import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { requireAdmin } from "@/lib/auth/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type VerificationSubmission = {
@@ -20,12 +19,7 @@ export async function getVerificationQueue(options?: {
   status?: string;
   search?: string;
 }) {
-  const user = await requireUserSession();
-  const role = await getCurrentUserRole();
-
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
+  await requireAdmin();
 
   const supabase = await createServerSupabaseClient();
   const selectedStatus = options?.status && options.status !== "all" ? options.status : "all";
@@ -68,8 +62,6 @@ export async function getVerificationQueue(options?: {
       .select("id", { count: "exact", head: true })
       .eq("verification_status", "rejected"),
   ]);
-
-  void user;
 
   return {
     items: (data ?? []) as VerificationSubmission[],

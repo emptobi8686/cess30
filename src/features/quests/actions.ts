@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { requireAdmin } from "@/lib/auth/guards";
 import type { ActionResult, QuestStatus } from "@/types";
 import {
   validateCreateQuestInput,
@@ -12,24 +12,13 @@ import {
   type SubmitQuestInput,
 } from "./validation";
 
-async function requireAdminSession() {
-  const user = await requireUserSession();
-  const role = await getCurrentUserRole();
-
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
-
-  return user;
-}
-
 export type { CreateQuestInput, SubmitQuestInput };
 
 export async function createQuestAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    await requireAdminSession();
+    await requireAdmin();
 
     const supabase = await createServerSupabaseClient();
 
@@ -79,7 +68,7 @@ export async function updateQuestAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const adminUser = await requireAdminSession();
+    const adminUser = await requireAdmin();
 
     const questId = String(formData.get("questId") ?? "").trim();
     if (!questId || !/^[0-9a-fA-F-]{36}$/.test(questId)) {
@@ -236,7 +225,7 @@ export async function reviewQuestSubmissionAction(
   formData: FormData
 ): Promise<ActionResult<{ status: QuestStatus }>> {
   try {
-    await requireAdminSession();
+    await requireAdmin();
 
     const supabase = await createServerSupabaseClient();
 

@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { getAccessContext } from "@/lib/auth/access-server";
 import {
   getLeaderboard,
   getLeaderboardEntry,
@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LeaderboardPage() {
   const user = await requireUserSession();
-  const role = await getCurrentUserRole();
+  const access = await getAccessContext();
   const supabase = await createServerSupabaseClient();
 
   // Fetch profile for display name.
@@ -36,7 +36,7 @@ export default async function LeaderboardPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const isAdmin = role === "admin";
+  const isAdmin = access?.isAdmin ?? false;
 
   // Determine the active period from a default (all-time). In a future
   // enhancement this could come from searchParams, but here we render all

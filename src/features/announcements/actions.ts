@@ -2,20 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { requireAdmin } from "@/lib/auth/guards";
 import { enqueueAnnouncementNotifications } from "@/lib/notifications/delivery";
 import { validateAnnouncementScope } from "@/features/announcements/validation";
 import type { ActionResult } from "@/types";
-
-async function requireAdminSession() {
-  const user = await requireUserSession();
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
-  return user;
-}
 
 function revalidateAnnouncements() {
   revalidatePath("/announcements");
@@ -32,7 +22,7 @@ export async function createAnnouncement(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const user = await requireAdminSession();
+    const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
     const title = String(formData.get("title") ?? "").trim();
@@ -61,8 +51,8 @@ export async function createAnnouncement(
         content,
         scope,
         course_id,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: user.userId,
+        updated_by: user.userId,
         is_published: publish,
         published_at: now,
       })
@@ -105,7 +95,7 @@ export async function updateAnnouncement(
   formData: FormData
 ): Promise<ActionResult> {
   try {
-    const user = await requireAdminSession();
+    const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
     const title = String(formData.get("title") ?? "").trim();
@@ -122,7 +112,7 @@ export async function updateAnnouncement(
 
     const { data, error } = await supabase
       .from("announcements")
-      .update({ title, content, scope, course_id, updated_by: user.id })
+      .update({ title, content, scope, course_id, updated_by: user.userId })
       .eq("id", id)
       .select("id")
       .maybeSingle();
@@ -149,14 +139,14 @@ export async function publishAnnouncement(
   sendPush = false
 ): Promise<ActionResult> {
   try {
-    const user = await requireAdminSession();
+    const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("announcements")
       .update({
         is_published: true,
         published_at: new Date().toISOString(),
-        updated_by: user.id,
+        updated_by: user.userId,
       })
       .eq("id", id)
       .select("id, title, scope, course_id")
@@ -197,11 +187,11 @@ export async function publishAnnouncement(
 
 export async function unpublishAnnouncement(id: string): Promise<ActionResult> {
   try {
-    const user = await requireAdminSession();
+    const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("announcements")
-      .update({ is_published: false, updated_by: user.id })
+      .update({ is_published: false, updated_by: user.userId })
       .eq("id", id)
       .select("id")
       .maybeSingle();
@@ -222,7 +212,7 @@ export async function unpublishAnnouncement(id: string): Promise<ActionResult> {
 
 export async function deleteAnnouncement(id: string): Promise<ActionResult> {
   try {
-    await requireAdminSession();
+    await requireAdmin();
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from("announcements")

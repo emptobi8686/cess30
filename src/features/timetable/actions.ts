@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { requireAdmin } from "@/lib/auth/guards";
 import {
   describeConflicts,
   findSessionConflicts,
@@ -15,15 +14,6 @@ import type { ActionResult } from "@/types";
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-async function requireAdminSession() {
-  const user = await requireUserSession();
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
-  return user;
-}
 
 type ConflictRow = {
   id: string;
@@ -108,7 +98,7 @@ export async function createLectureSession(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const user = await requireAdminSession();
+    const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
     const course_id = String(formData.get("course_id") ?? "").trim();
@@ -147,8 +137,8 @@ export async function createLectureSession(
         end_time,
         venue,
         lecturer_name,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: user.userId,
+        updated_by: user.userId,
       })
       .select("id")
       .single();
@@ -171,7 +161,7 @@ export async function updateLectureSession(
   formData: FormData
 ): Promise<ActionResult> {
   try {
-    const user = await requireAdminSession();
+    const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
     const course_id = String(formData.get("course_id") ?? "").trim();
@@ -209,7 +199,7 @@ export async function updateLectureSession(
         end_time,
         venue,
         lecturer_name,
-        updated_by: user.id,
+        updated_by: user.userId,
       })
       .eq("id", id)
       .select("id")
@@ -231,7 +221,7 @@ export async function updateLectureSession(
 
 export async function cancelLectureSession(id: string): Promise<ActionResult> {
   try {
-    const user = await requireAdminSession();
+    const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
     const { data, error } = await supabase
@@ -239,7 +229,7 @@ export async function cancelLectureSession(id: string): Promise<ActionResult> {
       .update({
         is_cancelled: true,
         cancelled_at: new Date().toISOString(),
-        updated_by: user.id,
+        updated_by: user.userId,
       })
       .eq("id", id)
       .select("id")
@@ -257,7 +247,7 @@ export async function cancelLectureSession(id: string): Promise<ActionResult> {
 
 export async function restoreLectureSession(id: string): Promise<ActionResult> {
   try {
-    const user = await requireAdminSession();
+    const user = await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
     // Restoring must not create a duplicate active slot. Fetch the row first so
@@ -296,7 +286,7 @@ export async function restoreLectureSession(id: string): Promise<ActionResult> {
       .update({
         is_cancelled: false,
         cancelled_at: null,
-        updated_by: user.id,
+        updated_by: user.userId,
       })
       .eq("id", id)
       .select("id")
@@ -318,7 +308,7 @@ export async function restoreLectureSession(id: string): Promise<ActionResult> {
 
 export async function deleteLectureSession(id: string): Promise<ActionResult> {
   try {
-    await requireAdminSession();
+    await requireAdmin();
     const supabase = await createServerSupabaseClient();
 
     const { data, error } = await supabase

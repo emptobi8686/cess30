@@ -1,7 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { getAccessContext } from "@/lib/auth/access-server";
+import { requireAdmin } from "@/lib/auth/guards";
 import type {
   LeaderboardEntry,
   LeaderboardPeriod,
@@ -34,12 +35,12 @@ export async function getActiveQuests(): Promise<Quest[]> {
  */
 export async function getQuestById(questId: string): Promise<Quest | null> {
   await requireUserSession();
-  const role = await getCurrentUserRole();
+  const access = await getAccessContext();
   const supabase = await createServerSupabaseClient();
 
   let query = supabase.from("quests").select("*").eq("id", questId);
 
-  if (role !== "admin") {
+  if (!access?.isAdmin) {
     query = query.eq("is_active", true);
   }
 
@@ -150,10 +151,7 @@ export async function getLeaderboardEntry(
  * Admin: fetch all quests (active and inactive).
  */
 export async function getAllQuestsAdmin(): Promise<Quest[]> {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
+  await requireAdmin();
 
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
@@ -171,10 +169,7 @@ export async function getAllQuestsAdmin(): Promise<Quest[]> {
 export async function getAllQuestSubmissionsAdmin(options?: {
   status?: QuestStatus;
 }): Promise<QuestSubmissionWithQuest[]> {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
+  await requireAdmin();
 
   const admin = createAdminSupabaseClient();
   let query = admin
@@ -195,10 +190,7 @@ export async function getAllQuestSubmissionsAdmin(options?: {
  * Admin: count pending quest submissions.
  */
 export async function getPendingQuestSubmissionsCount(): Promise<number> {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
+  await requireAdmin();
 
   const admin = createAdminSupabaseClient();
   const { count, error } = await admin
@@ -214,10 +206,7 @@ export async function getPendingQuestSubmissionsCount(): Promise<number> {
  * Admin: count active quests.
  */
 export async function getActiveQuestsCountAdmin(): Promise<number> {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
+  await requireAdmin();
 
   const admin = createAdminSupabaseClient();
   const { count, error } = await admin

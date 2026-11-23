@@ -2,21 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { requireAdmin } from "@/lib/auth/guards";
 import { validateVerificationRejectionReason } from "@/lib/verification";
 import type { ActionResult } from "@/types";
-
-async function requireAdminSession() {
-  const user = await requireUserSession();
-  const role = await getCurrentUserRole();
-
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
-
-  return user;
-}
 
 async function createVerificationNotification(
   profileId: string,
@@ -68,7 +56,7 @@ async function applyVerificationDecision(
   reason?: string | null
 ): Promise<ActionResult<{ status: "verified" | "rejected" }>> {
   try {
-    const adminUser = await requireAdminSession();
+    const adminUser = await requireAdmin();
 
     const normalizedReason =
       nextStatus === "rejected"
