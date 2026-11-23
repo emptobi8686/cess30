@@ -62,3 +62,28 @@ export async function getOfferings(filter: { semesterId: string; levelCode?: str
       : a.level_code.localeCompare(b.level_code)
   );
 }
+
+export type PlacementQueueRow = {
+  id: string;
+  level_code: string;
+  status: string;
+  created_at: string;
+  profiles: { full_name: string; matric_number: string | null; verification_status: string } | null;
+};
+
+export async function getPlacementQueue(filter: { status: string; levelCode?: string | null }): Promise<PlacementQueueRow[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data: session } = await supabase.from("academic_sessions").select("id").eq("is_current", true).maybeSingle();
+  if (!session) return [];
+  let query = supabase
+    .from("student_placements")
+    .select("id, level_code, status, created_at, profiles ( full_name, matric_number, verification_status )")
+    .eq("session_id", session.id)
+    .eq("status", filter.status)
+    .order("level_code")
+    .order("created_at");
+  if (filter.levelCode) query = query.eq("level_code", filter.levelCode);
+  const { data, error } = await query;
+  if (error) throw new Error("Could not load placements.");
+  return (data ?? []) as unknown as PlacementQueueRow[];
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { AlertCircle, Clock, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,12 +16,15 @@ type Props = {
   matricNumber: string | null;
   verificationStatus: VerificationStatus;
   rejectionReason?: string | null;
+  /** When set, verified students without a confirmed level are asked to choose one. */
+  placement?: { sessionLabel: string | null; status: "none" | "claimed" | "confirmed" | "rejected" };
 };
 
 export function VerificationBanner({
   matricNumber,
   verificationStatus,
   rejectionReason,
+  placement,
 }: Props) {
   const [state, formAction, isPending] = useActionState<CompleteProfileState, FormData>(
     submitMatricNumber,
@@ -115,7 +119,20 @@ export function VerificationBanner({
     );
   }
 
-  // If verified, return null or a verified status badge
+  if (placement?.sessionLabel && (placement.status === "none" || placement.status === "rejected")) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+        <p>
+          <span className="font-semibold">Select your level for {placement.sessionLabel}</span>
+          <span className="block text-xs text-muted-foreground">Your timetable, courses and announcements follow your level.</span>
+        </p>
+        <Link href="/settings/profile" className="text-sm font-medium text-primary hover:underline">
+          Choose level
+        </Link>
+      </div>
+    );
+  }
+
   return null;
 }
 

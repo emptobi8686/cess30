@@ -81,8 +81,6 @@ export function RegisterForm() {
       const { error: signUpError } = await signUpWithEmail(form.email, form.password, {
         full_name: form.fullName.trim(),
         matric_number: form.matricNumber.trim(),
-        department: "Civil Engineering",
-        level: "200",
       });
 
       if (signUpError) {

@@ -50,3 +50,12 @@ begin
     end if;
   end loop;
 end $$;
+
+-- A current session and semester so placement and offering journeys have a term to act on.
+insert into public.academic_sessions (label, starts_on, ends_on, is_current)
+values ('2026/2027', '2026-10-01', '2027-09-30', true)
+on conflict (label) do nothing;
+insert into public.semesters (session_id, number, label, starts_on, ends_on, is_current)
+select id, 1, 'First semester', '2026-10-01', '2027-02-28', true
+from public.academic_sessions where label = '2026/2027'
+on conflict (session_id, number) do nothing;

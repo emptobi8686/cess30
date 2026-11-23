@@ -35,6 +35,7 @@ import {
   getRecentlyCompletedStudySessions,
 } from "@/features/study-planner/queries";
 import type { VerificationStatus } from "@/types";
+import { getAcademicContext } from "@/features/academic/context";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,7 @@ export default async function DashboardPage() {
     getWeeklyStudySummary(user.id, weekInfo.weekStart, weekInfo.weekEnd),
     getRecentlyCompletedStudySessions(user.id, 3),
   ]);
+  const academic = await getAcademicContext();
 
   const firstName = displayName?.split(" ")[0];
 
@@ -91,6 +93,7 @@ export default async function DashboardPage() {
           matricNumber={matricNumber}
           verificationStatus={verificationStatus}
           rejectionReason={profile?.verification_rejection_reason ?? null}
+          placement={{ sessionLabel: academic.sessionLabel, status: academic.placementStatus }}
         />
 
         {/* ───────────────────────────────────────────────────────────── */}

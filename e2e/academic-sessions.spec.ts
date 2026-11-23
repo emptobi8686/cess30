@@ -15,10 +15,13 @@ test.describe("academic sessions (E1)", () => {
     await page.getByRole("button", { name: "Create session" }).click();
     await expect(page.getByRole("status").first()).toHaveText(`Session ${label} created.`);
 
+    // Making the seeded session current again keeps other specs' current term stable
+    // while still exercising the "make current" action (it clears, then sets).
     await page.reload();
-    await page.getByRole("button", { name: `Make ${label} current` }).click();
+    const makeSeeded = page.getByRole("button", { name: "Make 2026/2027 current" });
+    if (await makeSeeded.count()) await makeSeeded.click();
     await page.reload();
-    const card = page.locator("div", { hasText: label }).filter({ has: page.getByText("Current") }).first();
+    const card = page.locator("div", { hasText: "2026/2027" }).filter({ has: page.getByText("Current") }).first();
     await expect(card).toBeVisible();
   });
 });

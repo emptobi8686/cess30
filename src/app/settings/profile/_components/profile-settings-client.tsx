@@ -5,6 +5,8 @@ import { Clock, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/shared/dashboard-shell";
 import { AvatarControls } from "./avatar-controls";
+import { PlacementSection } from "./placement-section";
+import type { AcademicContext } from "@/features/academic/context-core";
 import { PageHeader } from "@/components/shared/page-header";
 import { VerificationBanner } from "@/components/shared/verification-banner";
 import {
@@ -28,7 +30,9 @@ export function ProfileSettingsClient({
   profile,
   displayName,
   initials,
+  academic,
 }: {
+  academic: AcademicContext;
   profile: {
     id: string;
     full_name: string;
@@ -204,6 +208,8 @@ export function ProfileSettingsClient({
                 )}
               </CardContent>
             </Card>
+
+            <PlacementSection academic={academic} />
 
             <Card>
               <CardHeader>
