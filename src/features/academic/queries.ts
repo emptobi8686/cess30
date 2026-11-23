@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { buildVerificationSearchFilter } from "@/lib/postgrest";
 
 export type Semester = {
   id: string;
@@ -86,4 +87,44 @@ export async function getPlacementQueue(filter: { status: string; levelCode?: st
   const { data, error } = await query;
   if (error) throw new Error("Could not load placements.");
   return (data ?? []) as unknown as PlacementQueueRow[];
+}
+
+export type EnrollmentRow = {
+  id: string;
+  student_id: string;
+  enrolment_type: string;
+  status: string;
+  source: string;
+  profiles: { full_name: string; matric_number: string | null } | null;
+};
+
+export async function getOfferingEnrollments(offeringId: string): Promise<EnrollmentRow[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("course_enrollments")
+    .select("id, student_id, enrolment_type, status, source, profiles!course_enrollments_student_id_fkey ( full_name, matric_number )")
+    .eq("offering_id", offeringId)
+    .eq("status", "active")
+    .order("created_at");
+  if (error) throw new Error("Could not load enrolments.");
+  return ((data ?? []) as unknown as EnrollmentRow[]).sort((a, b) =>
+    (a.profiles?.full_name ?? "").localeCompare(b.profiles?.full_name ?? "")
+  );
+}
+
+export type StudentSearchRow = { id: string; full_name: string; matric_number: string | null; level: string | null };
+
+export async function searchStudents(query: string): Promise<StudentSearchRow[]> {
+  const filter = buildVerificationSearchFilter(query);
+  if (!filter) return [];
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, matric_number, level")
+    .eq("verification_status", "verified")
+    .or(filter)
+    .order("full_name")
+    .limit(10);
+  if (error) throw new Error("Could not search students.");
+  return (data ?? []) as StudentSearchRow[];
 }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { LEVEL_CODES, semesterSchema, sessionSchema } from "@/features/academic/validation";
+import { isEnrolmentType, levelEnrolMessage } from "@/features/academic/enrollments";
 import { bulkOfferingMessage, OFFERING_STATUSES, selectedCourseIds } from "@/features/academic/offerings";
 import { errorState, successState, type ActionState } from "@/lib/action-state";
 import { accessErrorMessage, requireAdmin } from "@/lib/auth/guards";
@@ -148,5 +149,66 @@ export async function updateOfferingStatusAction(_previous: ActionState, formDat
     return successState(`Status set to ${status}.`);
   } catch (error) {
     return errorState(accessErrorMessage(error, "The offering could not be updated."));
+  }
+}
+
+const ENROL_MESSAGES = ["Enrolment not found.", "Invalid enrolment status."];
+
+export async function enrollLevelCoreAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requireAdmin();
+    const semesterId = String(formData.get("semesterId") ?? "");
+    const levelCode = String(formData.get("levelCode") ?? "");
+    if (!UUID.test(semesterId)) return errorState("Choose a semester.");
+    if (!LEVEL_CODES.includes(levelCode as (typeof LEVEL_CODES)[number])) return errorState("Choose a level.");
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase.rpc("enroll_level_core", { p_semester_id: semesterId, p_level_code: levelCode });
+    if (error) {
+      logServerError("academic.enrollLevelCore", error);
+      return errorState("The level could not be enrolled.");
+    }
+    revalidateAcademic();
+    return successState(levelEnrolMessage(levelCode, Number(data ?? 0)));
+  } catch (error) {
+    return errorState(accessErrorMessage(error, "The level could not be enrolled."));
+  }
+}
+
+export async function enrollStudentAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requireAdmin();
+    const studentId = String(formData.get("studentId") ?? "");
+    const offeringId = String(formData.get("offeringId") ?? "");
+    const type = String(formData.get("type") ?? "carryover");
+    if (!UUID.test(studentId) || !UUID.test(offeringId)) return errorState("Choose a student and an offering.");
+    if (!isEnrolmentType(type)) return errorState("Choose a valid enrolment type.");
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase.rpc("enroll_student", { p_student_id: studentId, p_offering_id: offeringId, p_type: type });
+    if (error) {
+      logServerError("academic.enrollStudent", error);
+      return errorState("The student could not be enrolled.");
+    }
+    revalidateAcademic();
+    return successState(`Student enrolled (${type}).`);
+  } catch (error) {
+    return errorState(accessErrorMessage(error, "The student could not be enrolled."));
+  }
+}
+
+export async function dropEnrollmentAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requireAdmin();
+    const enrollmentId = String(formData.get("enrollmentId") ?? "");
+    if (!UUID.test(enrollmentId)) return errorState("Invalid enrolment.");
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase.rpc("set_enrollment_status", { p_enrollment_id: enrollmentId, p_status: "dropped" });
+    if (error) {
+      logServerError("academic.dropEnrollment", error);
+      return errorState(error.message && ENROL_MESSAGES.includes(error.message) ? error.message : "The enrolment could not be dropped.");
+    }
+    revalidateAcademic();
+    return successState("Enrolment dropped.");
+  } catch (error) {
+    return errorState(accessErrorMessage(error, "The enrolment could not be dropped."));
   }
 }

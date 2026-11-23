@@ -1,6 +1,7 @@
 -- E2E seed users for the CI Supabase stack (never run against production).
 -- Password for every account: Blueprint-e2e-2026!
--- Accounts: verified, pending, rejected, suspended students; one admin (also a student).
+-- Accounts: verified, pending, rejected, suspended students; one admin (also a student);
+-- placed (confirmed level 200) and carry (confirmed level 300) for the enrolment journey.
 create extension if not exists pgcrypto with schema extensions;
 
 do $$
@@ -10,7 +11,9 @@ declare
     {"email":"pending@e2e.test","name":"Peter Pending","matric":"900000002","status":"pending","admin":false},
     {"email":"rejected@e2e.test","name":"Rita Rejected","matric":"900000003","status":"rejected","admin":false},
     {"email":"suspended@e2e.test","name":"Sam Suspended","matric":"900000004","status":"suspended","admin":false},
-    {"email":"admin@e2e.test","name":"Ada Admin","matric":"900000005","status":"verified","admin":true}
+    {"email":"admin@e2e.test","name":"Ada Admin","matric":"900000005","status":"verified","admin":true},
+    {"email":"placed@e2e.test","name":"Paula Placed","matric":"900000006","status":"verified","admin":false},
+    {"email":"carry@e2e.test","name":"Carl Carryover","matric":"900000007","status":"verified","admin":false}
   ]';
   v_account jsonb;
   v_id uuid;
@@ -59,3 +62,20 @@ insert into public.semesters (session_id, number, label, starts_on, ends_on, is_
 select id, 1, 'First semester', '2026-10-01', '2027-02-28', true
 from public.academic_sessions where label = '2026/2027'
 on conflict (session_id, number) do nothing;
+
+-- Confirmed placements (200 and 300) and a level-200 GET209 offering for the enrolment journey.
+insert into public.student_placements (student_id, session_id, level_code, status, source, confirmed_at)
+select p.id, s.id, v.level, 'confirmed', 'admin', now()
+from (values ('900000006', '200'), ('900000007', '300')) as v(matric, level)
+join public.profiles p on p.matric_number = v.matric
+cross join public.academic_sessions s
+where s.label = '2026/2027'
+on conflict (student_id, session_id) do nothing;
+
+insert into public.course_offerings (course_id, semester_id, level_code, status)
+select c.id, sem.id, '200', 'active'
+from public.courses c
+join public.semesters sem on sem.number = 1
+join public.academic_sessions s on s.id = sem.session_id and s.label = '2026/2027'
+where c.course_code = 'GET209'
+on conflict (course_id, semester_id, level_code) do nothing;
