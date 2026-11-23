@@ -1,7 +1,8 @@
 "use server";
 
+import { guardStudentAction } from "@/lib/auth/guards";
+
 import { revalidatePath } from "next/cache";
-import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   validateStudyDate,
@@ -25,7 +26,9 @@ import type {
 export async function createStudySession(
   formData: FormData
 ): Promise<ActionResult<{ id: string; warnings?: string[] }>> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
 
   const title = (formData.get("title") as string)?.trim();
   const rawCourseId = (formData.get("course_id") as string)?.trim();
@@ -212,7 +215,9 @@ export async function updateStudySession(
   formData: FormData,
   updateEntireSeries = false
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
 
   // Verify ownership
@@ -300,7 +305,9 @@ export async function deleteStudySession(
   sessionId: string,
   deleteEntireSeries = false
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
 
   const { data: existing, error: fetchError } = await supabase
@@ -344,7 +351,9 @@ export async function toggleStudySessionCompleted(
   sessionId: string,
   completed: boolean
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
 
   const completedAt = completed ? new Date().toISOString() : null;
@@ -375,7 +384,9 @@ export async function rescheduleStudySession(
   newStartTime: string,
   newEndTime: string
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
 
   const dateError = validateStudyDate(newDate);

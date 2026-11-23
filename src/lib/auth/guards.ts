@@ -69,3 +69,18 @@ export function accessErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof AccessDeniedError) return ACCESS_DENIED_MESSAGE;
   return error instanceof Error ? error.message : fallback;
 }
+
+export type GuardResult = { ok: true; ctx: AccessContext } | { ok: false; error: string };
+
+/**
+ * For server actions that return ActionResult: never throws for access failures.
+ * Usage: `const access = await guardStudentAction("full"); if (!access.ok) return access;`
+ */
+export async function guardStudentAction(need: "read" | "full"): Promise<GuardResult> {
+  try {
+    return { ok: true, ctx: await requireStudentAccess(need) };
+  } catch (error) {
+    if (error instanceof AccessDeniedError) return { ok: false, error: ACCESS_DENIED_MESSAGE };
+    throw error;
+  }
+}

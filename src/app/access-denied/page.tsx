@@ -12,7 +12,7 @@ export default function AccessDeniedPage() {
           </div>
           <CardTitle className="text-2xl">Access denied</CardTitle>
           <CardDescription>
-            You don't have permission to open this page. If you think you should, sign in with the right account or contact your course representative.
+            You don&apos;t have permission to open this page. If you think you should, sign in with the right account or contact your course representative.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

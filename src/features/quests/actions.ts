@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireUserSession } from "@/lib/supabase/auth";
-import { requireAdmin } from "@/lib/auth/guards";
+import { guardStudentAction, requireAdmin } from "@/lib/auth/guards";
 import type { ActionResult, QuestStatus } from "@/types";
 import {
   validateCreateQuestInput,
@@ -138,7 +137,9 @@ export async function submitQuestAction(
   formData: FormData
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const user = await requireUserSession();
+    const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
     const supabase = await createServerSupabaseClient();
 
     const input: SubmitQuestInput = {

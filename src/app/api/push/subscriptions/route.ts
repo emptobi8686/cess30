@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { isSafePushEndpoint } from "@/lib/notifications/validation";
+import { studentAccessLevel } from "@/lib/auth/access";
+import { getAccessContext } from "@/lib/auth/access-server";
 
 const subscriptionSchema = z.object({
   endpoint: z.string().url().max(2048),
@@ -61,6 +63,14 @@ export async function POST(request: NextRequest) {
 
   const user = await getAuthenticatedUser();
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+
+  const access = await getAccessContext();
+  if (!access || studentAccessLevel(access) === "none") {
+    return NextResponse.json(
+      { error: "Your account cannot register notification devices." },
+      { status: 403 }
+    );
+  }
 
   let body: unknown;
   try {

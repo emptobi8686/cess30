@@ -1,10 +1,11 @@
 "use server";
 
+import { guardStudentAction } from "@/lib/auth/guards";
+
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireUserSession } from "@/lib/supabase/auth";
 import type { ActionResult, NotificationPreferences } from "@/types";
 
 const notificationIdSchema = z.string().uuid();
@@ -34,7 +35,9 @@ function revalidateNotificationViews() {
 export async function updateNotificationPreferences(
   input: Omit<NotificationPreferences, "user_id" | "created_at" | "updated_at">
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("read");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const parsed = preferencesSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid notification settings." };
@@ -68,7 +71,9 @@ export async function updateNotificationPreferences(
 }
 
 export async function markNotificationRead(id: string): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("read");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   if (!notificationIdSchema.safeParse(id).success) {
     return { ok: false, error: "Invalid notification." };
   }
@@ -91,7 +96,9 @@ export async function markNotificationRead(id: string): Promise<ActionResult> {
 }
 
 export async function markAllNotificationsRead(): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("read");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase
     .from("notifications")
@@ -107,7 +114,9 @@ export async function markAllNotificationsRead(): Promise<ActionResult> {
 }
 
 export async function deleteNotification(id: string): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("read");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   if (!notificationIdSchema.safeParse(id).success) {
     return { ok: false, error: "Invalid notification." };
   }
