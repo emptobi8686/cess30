@@ -1,21 +1,11 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAccessContext } from "@/lib/auth/access-server";
 
-export async function getCurrentUserRole() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return null;
-  }
-
-  const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  return roleData?.role ?? "student";
+/**
+ * @deprecated Use getAccessContext() / guards in "@/lib/auth/guards".
+ * Kept for backwards compatibility; resolves multi-role users correctly.
+ */
+export async function getCurrentUserRole(): Promise<"admin" | "student" | null> {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return ctx.isAdmin ? "admin" : "student";
 }
