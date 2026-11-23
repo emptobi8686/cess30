@@ -26,7 +26,7 @@
     try {
       var parsed = data && typeof data.json === "function" ? data.json() : {};
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) payload = parsed;
-    } catch (error) {
+    } catch {
       payload = {};
     }
     var result = {

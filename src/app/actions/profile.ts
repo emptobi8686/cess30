@@ -1,6 +1,7 @@
 "use server";
 
 import { logServerError, toUserError } from "@/lib/errors";
+import { AVATAR_BUCKET, objectPathFromPublicUrl } from "@/features/profile/avatar";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUserSession } from "@/lib/supabase/auth";
@@ -139,127 +140,76 @@ export async function getProfile(): Promise<{
 }
 
 /**
- * Server Action: Upload or replace a profile picture.
- *
- * The file is stored in the public `profile-pictures` bucket under
- * `profile-pictures/<userId>/<filename>`. Only the owning student may write.
- * Returns the public URL of the uploaded object.
+ * Server Action: record a profile picture that the browser uploaded directly to
+ * Storage (avoids the 1 MB server-action body limit). The path must be inside the
+ * caller's own folder; the previous picture in that folder is removed.
  */
-export async function uploadProfilePicture(
-  _previousState: CompleteProfileState,
-  formData: FormData
-): Promise<CompleteProfileState> {
+export async function setAvatarAction(path: string): Promise<CompleteProfileState> {
   const user = await requireUserSession();
-  const file = formData.get("file") as File | null;
-
-  if (!file) {
-    return { error: "No file selected." };
-  }
-
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-  if (!allowedTypes.includes(file.type)) {
-    return { error: "Only JPEG, PNG, WebP, and GIF images are allowed." };
-  }
-
-  const maxBytes = 5 * 1024 * 1024; // 5 MB
-  if (file.size > maxBytes) {
-    return { error: "Profile picture must be smaller than 5 MB." };
+  if (typeof path !== "string" || !path.startsWith(`${user.id}/`) || path.includes("..")) {
+    return { error: "Invalid profile picture." };
   }
 
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: profile } = await supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle();
+    const previousPath = profile?.avatar_url ? objectPathFromPublicUrl(profile.avatar_url, AVATAR_BUCKET) : null;
 
-    const fileExt = file.name.split(".").pop() ?? "jpg";
-    const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("profile-pictures")
-      .upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-
-    if (uploadError) {
-      logServerError("profile", uploadError);
-      return { error: "Unable to upload profile picture." };
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("profile-pictures")
-      .getPublicUrl(fileName);
-
+    const { data: urlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
     const { error: updateError } = await supabase
       .from("profiles")
       .update({ avatar_url: urlData.publicUrl })
       .eq("id", user.id);
 
     if (updateError) {
-      logServerError("profile", updateError);
+      logServerError("profile.setAvatar", updateError);
+      await supabase.storage.from(AVATAR_BUCKET).remove([path]);
       return { error: toUserError(updateError, "profile") };
+    }
+
+    if (previousPath && previousPath !== path && previousPath.startsWith(`${user.id}/`)) {
+      const { error: removeError } = await supabase.storage.from(AVATAR_BUCKET).remove([previousPath]);
+      if (removeError) logServerError("profile.setAvatar.cleanup", removeError);
     }
 
     revalidatePath("/settings/profile");
     revalidatePath("/dashboard");
     return { success: "Profile picture updated." };
-  } catch {
-    return { error: "Unable to upload profile picture. Please try again." };
+  } catch (error) {
+    logServerError("profile.setAvatar", error);
+    return { error: "Unable to update profile picture. Please try again." };
   }
 }
 
 /**
- * Server Action: Delete the student's profile picture.
+ * Server Action: remove the profile picture. Clears avatar_url even when the URL is
+ * not one of our Storage objects (e.g. a legacy external picture).
  */
 export async function deleteProfilePicture(): Promise<CompleteProfileState> {
   const user = await requireUserSession();
 
   try {
     const supabase = await createServerSupabaseClient();
+    const { data: profile } = await supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle();
+    if (!profile?.avatar_url) return { error: "No profile picture to delete." };
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("avatar_url")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (!profile?.avatar_url) {
-      return { error: "No profile picture to delete." };
+    const objectPath = objectPathFromPublicUrl(profile.avatar_url, AVATAR_BUCKET);
+    if (objectPath && objectPath.startsWith(`${user.id}/`)) {
+      const { error: removeError } = await supabase.storage.from(AVATAR_BUCKET).remove([objectPath]);
+      if (removeError) logServerError("profile.deleteAvatar", removeError);
     }
 
-    // Extract the object path from the public URL.
-    const url = new URL(profile.avatar_url);
-    const pathSegments = url.pathname.split("/");
-    // Public URL format: .../storage/v1/object/public/profile-pictures/<path>
-    const publicIndex = pathSegments.indexOf("public");
-    if (publicIndex === -1 || publicIndex + 2 >= pathSegments.length) {
-      return { error: "Unable to parse profile picture path." };
-    }
-    const bucket = pathSegments[publicIndex + 1]; // "profile-pictures"
-    const objectPath = pathSegments.slice(publicIndex + 2).join("/");
-
-    const { error: removeError } = await supabase.storage
-      .from(bucket)
-      .remove([objectPath]);
-
-    if (removeError) {
-      logServerError("profile", removeError);
-      return { error: "Unable to delete profile picture." };
-    }
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ avatar_url: null })
-      .eq("id", user.id);
-
+    const { error: updateError } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id);
     if (updateError) {
-      logServerError("profile", updateError);
+      logServerError("profile.deleteAvatar", updateError);
       return { error: toUserError(updateError, "profile") };
     }
 
     revalidatePath("/settings/profile");
     revalidatePath("/dashboard");
     return { success: "Profile picture removed." };
-  } catch {
+  } catch (error) {
+    logServerError("profile.deleteAvatar", error);
     return { error: "Unable to delete profile picture. Please try again." };
   }
 }
-
