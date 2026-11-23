@@ -5,8 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getNotificationDeliveryStats } from "@/features/notifications/queries";
-import { getPendingQuestSubmissionsCount, getActiveQuestsCountAdmin } from "@/features/quests/queries";
+import { getAdminOverviewStats } from "@/features/admin/overview";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { formatTimestamp } from "@/lib/dates";
@@ -25,30 +24,8 @@ export default async function AdminOverviewPage() {
     .maybeSingle();
 
   const displayName = profile?.full_name ?? undefined;
-  const notificationStats = await getNotificationDeliveryStats();
-
-  // Quest and verification stats
-  const [pendingVerifications, activeQuests, pendingSubmissions] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("verification_status", "pending"),
-    getActiveQuestsCountAdmin(),
-    getPendingQuestSubmissionsCount(),
-  ]);
-
-  // Counts — these are real database counts, not fabricated
-  const [
-    { count: courseCount },
-    { count: sessionCount },
-    { count: announcementCount },
-    { count: draftCount },
-  ] = await Promise.all([
-    supabase.from("courses").select("*", { count: "exact", head: true }),
-    supabase.from("lecture_sessions").select("*", { count: "exact", head: true }),
-    supabase.from("announcements").select("*", { count: "exact", head: true }).eq("is_published", true),
-    supabase.from("announcements").select("*", { count: "exact", head: true }).eq("is_published", false),
-  ]);
+  const stats = await getAdminOverviewStats();
+  const show = (value: number | null) => (value === null ? "—" : String(value));
 
   // Recent lecture sessions (up to 5)
   const { data: recentSessions } = await supabase
@@ -77,43 +54,43 @@ export default async function AdminOverviewPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Courses"
-            value={String(courseCount ?? 0)}
+            value={String(stats.courses)}
             description="200-level catalogue"
             tone="default"
           />
           <StatCard
             label="Lecture sessions"
-            value={String(sessionCount ?? 0)}
+            value={String(stats.sessions)}
             description="Total scheduled"
             tone="default"
           />
           <StatCard
             label="Published notices"
-            value={String(announcementCount ?? 0)}
+            value={String(stats.published)}
             description="Visible to students"
             tone="success"
           />
           <StatCard
             label="Drafts"
-            value={String(draftCount ?? 0)}
+            value={String(stats.drafts)}
             description="Unpublished"
             tone="muted"
           />
           <StatCard
             label="Pending verifications"
-            value={String(pendingVerifications ?? 0)}
+            value={String(stats.pendingVerifications)}
             description="Matric reviews awaiting decision"
             tone="default"
           />
           <StatCard
             label="Active quests"
-            value={String(activeQuests ?? 0)}
+            value={show(stats.activeQuests)}
             description="Visible to students"
             tone="success"
           />
           <StatCard
             label="Pending submissions"
-            value={String(pendingSubmissions ?? 0)}
+            value={show(stats.pendingSubmissions)}
             description="Quest evidence awaiting review"
             tone="muted"
           />
@@ -124,12 +101,17 @@ export default async function AdminOverviewPage() {
             <CardTitle className="text-base">Notification delivery · last 7 days</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {stats.warnings.map((warning) => (
+              <p key={warning} role="status" className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
+                {warning}
+              </p>
+            ))}
             <div className="grid gap-3 sm:grid-cols-4">
               {[
-                ["Notifications", notificationStats.total],
-                ["Queued", notificationStats.pending],
-                ["Delivered", notificationStats.sent],
-                ["Failed", notificationStats.failed],
+                ["Notifications", show(stats.notifications?.total ?? null)],
+                ["Queued", show(stats.notifications?.pending ?? null)],
+                ["Delivered", show(stats.notifications?.sent ?? null)],
+                ["Failed", show(stats.notifications?.failed ?? null)],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg bg-muted/50 p-3">
                   <p className="text-xs text-muted-foreground">{label}</p>
@@ -137,11 +119,11 @@ export default async function AdminOverviewPage() {
                 </div>
               ))}
             </div>
-            {notificationStats.failedAttempts.length > 0 && (
+            {stats.notifications && stats.notifications.failedAttempts.length > 0 && (
               <div>
                 <h2 className="mb-2 text-sm font-medium">Recent failed deliveries</h2>
                 <ul className="divide-y divide-border/60">
-                  {notificationStats.failedAttempts.map((attempt) => (
+                  {stats.notifications.failedAttempts.map((attempt) => (
                     <li key={attempt.id} className="flex flex-wrap justify-between gap-2 py-2 text-sm">
                       <span>
                         {attempt.notification_type.replaceAll("_", " ")} ·{" "}
