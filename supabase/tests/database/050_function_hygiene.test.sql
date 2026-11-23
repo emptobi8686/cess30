@@ -24,15 +24,18 @@ select ok(
   position('current_user' in (select prosrc from pg_proc where oid = 'public.grant_admin_role(uuid, uuid)'::regprocedure)) = 0,
   'grant_admin_role has no ineffective current_user branch');
 
--- Advisor-equivalent guards (would have caught BP-001).
+-- Advisor-equivalent guards (would have caught BP-001). Extension-owned objects
+-- (e.g. pgTAP's helper views) are excluded.
 select is_empty(
   $$select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
-    where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity$$,
+    where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+      and not exists (select 1 from pg_depend d where d.classid = 'pg_class'::regclass and d.objid = c.oid and d.deptype = 'e')$$,
   'every table in public has row level security enabled');
 select is_empty(
   $$select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind = 'v'
-      and not coalesce(c.reloptions @> array['security_invoker=true'], false)$$,
+      and not coalesce(c.reloptions @> array['security_invoker=true'], false)
+      and not exists (select 1 from pg_depend d where d.classid = 'pg_class'::regclass and d.objid = c.oid and d.deptype = 'e')$$,
   'every view in public runs with security_invoker');
 
 select * from finish();
