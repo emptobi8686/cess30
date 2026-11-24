@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron/auth";
+import { FEATURES } from "@/config/features";
 import { fetchYouTubeMetadata } from "@/features/tutorials/metadata-core";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -13,6 +14,7 @@ export async function POST(request: NextRequest) {
   if (!isAuthorizedCron(request.headers.get("authorization"))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
+  if (!FEATURES.tutorials) return NextResponse.json({ error: "Tutorials are not enabled." }, { status: 404 });
   try {
     const admin = createAdminSupabaseClient();
     const { data: rows, error } = await admin

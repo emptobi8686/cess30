@@ -4,6 +4,7 @@ import { hasSeededSupabase, signIn } from "./support/auth";
 // P9: Paula Placed (level 200) sees the seeded level-200 tutorials.
 test.describe("tutorials (P9)", () => {
   test.skip(!hasSeededSupabase, "requires the seeded Supabase stack (E2E_SUPABASE=1)");
+  test.skip(process.env.NEXT_PUBLIC_FEATURE_TUTORIALS !== "true", "Tutorials are switched off (NEXT_PUBLIC_FEATURE_TUTORIALS)");
 
   test("embeds use the privacy-enhanced player", async ({ page }) => {
     await signIn(page, "placed@e2e.test");

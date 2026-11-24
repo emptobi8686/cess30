@@ -1,5 +1,6 @@
 "use client";
 
+import { FEATURES } from "@/config/features";
 import { cohortLabel, type ShellAcademic } from "./cohort-label";
 
 import Image from "next/image";
@@ -44,7 +45,7 @@ const navItems = [
   { label: "Quests", href: "/quests", icon: Trophy },
   { label: "Leaderboard", href: "/leaderboard", icon: Medal },
   { label: "Library", href: "/library", icon: LibraryIcon },
-  { label: "Tutorials", href: "/tutorials", icon: PlayCircle },
+  ...(FEATURES.tutorials ? [{ label: "Tutorials", href: "/tutorials", icon: PlayCircle }] : []),
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

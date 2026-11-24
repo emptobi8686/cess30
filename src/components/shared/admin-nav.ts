@@ -1,3 +1,5 @@
+import { FEATURES } from "@/config/features";
+
 /** Admin navigation entries; adminOnly items are hidden from course representatives. */
 export const ADMIN_NAV = [
   { label: "Overview", href: "/admin", adminOnly: false },
@@ -14,6 +16,6 @@ export const ADMIN_NAV = [
 
 export type AdminNavLabel = (typeof ADMIN_NAV)[number]["label"];
 
-export function visibleAdminNav(isAdmin: boolean) {
-  return ADMIN_NAV.filter((item) => isAdmin || !item.adminOnly);
+export function visibleAdminNav(isAdmin: boolean, features: { tutorials: boolean } = FEATURES) {
+  return ADMIN_NAV.filter((item) => (isAdmin || !item.adminOnly) && (features.tutorials || item.label !== "Tutorials"));
 }

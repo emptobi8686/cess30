@@ -10,5 +10,5 @@ test("course representatives do not see verification or staff management", () =>
 });
 
 test("admins see everything", () => {
-  assert.equal(visibleAdminNav(true).length, 10);
+  assert.equal(visibleAdminNav(true, { tutorials: true }).length, 10);
 });
