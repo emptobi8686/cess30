@@ -128,10 +128,9 @@ export function RegisterForm() {
           <div className="space-y-3">
             <Button
               type="button"
-              variant="outline"
               disabled={isSubmitting}
               onClick={handleGoogleSignUp}
-              className="w-full h-11 border-border font-medium hover:bg-muted/70 gap-2"
+              className="w-full h-11 font-medium gap-2"
             >
               {isGoogleSubmitting ? (
                 <>
@@ -145,6 +144,9 @@ export function RegisterForm() {
                 </>
               )}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Students: use the Google account you use for school. First time? This creates your account; you add your matric number next.
+            </p>
           </div>
 
           {/* Visual Divider */}

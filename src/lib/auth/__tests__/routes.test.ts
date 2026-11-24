@@ -17,6 +17,7 @@ describe("routeAccessLevel", () => {
     ["/settings", "read"],
     ["/settings/profile", "read"],
     ["/settings/notifications", "read"],
+    ["/welcome", "read"],
     ["/study-planner", "full"],
     ["/quests", "full"],
     ["/leaderboard", "full"],

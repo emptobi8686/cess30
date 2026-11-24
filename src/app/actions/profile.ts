@@ -51,6 +51,7 @@ export async function submitMatricNumber(
     }
 
     revalidatePath("/dashboard");
+    revalidatePath("/welcome");
     return { success: "Matriculation number saved. Your profile is pending administrator review." };
   } catch {
     return { error: "Unable to update profile. Please try again." };

@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_NAME } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/auth/safe-next";
 import { formatOAuthError, type AuthMessageCode } from "@/lib/auth/messages";
+import { postSignInPath } from "@/lib/auth/redirect-origin";
 
 const ALLOWED_OTP_TYPES: EmailOtpType[] = [
   "signup",
@@ -96,6 +97,16 @@ export async function handleAuthCallback(request: NextRequest) {
     });
     if (error) {
       errorMessage = error.message;
+    }
+  }
+
+  if (!errorMessage && !recovery) {
+    // First Google sign-in: send students without a matric number to the welcome step.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from("profiles").select("matric_number").eq("id", user.id).maybeSingle();
+      const destination = postSignInPath(next, profile ?? null);
+      if (destination !== next) response.headers.set("location", new URL(destination, request.url).toString());
     }
   }
 

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { authCallbackUrl, authRedirectOrigin } from "@/lib/auth/redirect-origin";
 
 export function isSupabaseConfigured() {
   return Boolean(
@@ -25,21 +26,21 @@ export async function signInWithGoogle(options?: { redirectTo?: string }) {
   }
 
   const supabase = createClient();
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  const siteUrl = authRedirectOrigin(
+    typeof window !== "undefined" ? window.location.origin : null,
+    process.env.NEXT_PUBLIC_SITE_URL
+  );
 
   const next = options?.redirectTo ?? "/dashboard";
-  const callbackUrl = `${siteUrl}/auth/confirm?next=${encodeURIComponent(next)}`;
 
+  // Sign-in and sign-up are the same with Google: a first sign-in creates the account.
+  // Only basic profile scopes are requested (no offline access), and the account chooser
+  // is always shown so students on shared phones/lab PCs pick the right Google account.
   return supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: callbackUrl,
-      queryParams: {
-        access_type: "offline",
-        prompt: "select_account",
-      },
+      redirectTo: authCallbackUrl(siteUrl, next),
+      queryParams: { prompt: "select_account" },
     },
   });
 }
@@ -56,9 +57,10 @@ export async function signUpWithEmail(
   }
 
   const supabase = createClient();
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  const siteUrl = authRedirectOrigin(
+    typeof window !== "undefined" ? window.location.origin : null,
+    process.env.NEXT_PUBLIC_SITE_URL
+  );
 
   return supabase.auth.signUp({
     email,
@@ -78,9 +80,10 @@ export async function resetPassword(email: string) {
   }
 
   const supabase = createClient();
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  const siteUrl = authRedirectOrigin(
+    typeof window !== "undefined" ? window.location.origin : null,
+    process.env.NEXT_PUBLIC_SITE_URL
+  );
 
   return supabase.auth.resetPasswordForEmail(email, {
     // The confirmation route verifies the recovery token and then forwards to

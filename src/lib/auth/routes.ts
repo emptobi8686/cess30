@@ -25,6 +25,7 @@ const READ_ROUTES = [
   "/announcements",
   "/notifications",
   "/settings",
+  "/welcome",
 ] as const;
 
 const FULL_ROUTES = ["/study-planner", "/quests", "/leaderboard"] as const;
