@@ -14,6 +14,7 @@ export type AdminOverviewStats = {
   published: number;
   drafts: number;
   pendingVerifications: number;
+  levelRequests: number;
   activeQuests: number | null;
   pendingSubmissions: number | null;
   notifications: NotificationDeliveryStats | null;
@@ -40,13 +41,14 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
   const warnings: string[] = [];
   const serverStatsWarning = "Server statistics are unavailable (check SUPABASE_SERVICE_ROLE_KEY).";
 
-  const [courses, sessions, published, drafts, pendingVerifications, activeQuests, pendingSubmissions, notifications] =
+  const [courses, sessions, published, drafts, pendingVerifications, levelRequests, activeQuests, pendingSubmissions, notifications] =
     await Promise.all([
       supabase.from("courses").select("id", { count: "exact", head: true }),
       supabase.from("lecture_sessions").select("id", { count: "exact", head: true }),
       supabase.from("announcements").select("id", { count: "exact", head: true }).eq("is_published", true),
       supabase.from("announcements").select("id", { count: "exact", head: true }).eq("is_published", false),
       supabase.from("profiles").select("id", { count: "exact", head: true }).eq("verification_status", "pending"),
+      supabase.from("student_placements").select("id", { count: "exact", head: true }).eq("status", "claimed"),
       optional(getActiveQuestsCountAdmin, warnings, serverStatsWarning),
       optional(getPendingQuestSubmissionsCount, warnings, serverStatsWarning),
       optional(getNotificationDeliveryStats, warnings, serverStatsWarning),
@@ -58,6 +60,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     published: countOf(published),
     drafts: countOf(drafts),
     pendingVerifications: countOf(pendingVerifications),
+    levelRequests: countOf(levelRequests),
     activeQuests,
     pendingSubmissions,
     notifications,

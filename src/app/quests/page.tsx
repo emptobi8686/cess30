@@ -94,7 +94,7 @@ export default async function QuestsPage() {
         {quests.length === 0 ? (
           <EmptyState
             title="No active quests"
-            description="There are no active quests available right now. Check back later."
+            description="No open quests for your level or courses right now. Quests appear here once your course rep or the department posts one for you."
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

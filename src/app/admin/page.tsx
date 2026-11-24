@@ -55,6 +55,42 @@ export default async function AdminOverviewPage() {
           description="Manage lecture sessions, announcements, and the course catalogue."
         />
 
+        {stats.pendingVerifications + stats.levelRequests + (stats.pendingSubmissions ?? 0) > 0 ? (
+          <Card className="border-amber-500/40 bg-amber-500/5" data-testid="admin-todo">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Waiting on you</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Students only see announcements, quests and the leaderboard after you verify them.
+              </p>
+              <ul className="space-y-2 text-sm">
+                {stats.pendingVerifications > 0 ? (
+                  <li>
+                    <Link href="/admin/verifications" className="font-medium text-primary hover:underline">
+                      {stats.pendingVerifications} student(s) to verify
+                    </Link>
+                  </li>
+                ) : null}
+                {stats.levelRequests > 0 ? (
+                  <li>
+                    <Link href="/admin/academic/placements" className="font-medium text-primary hover:underline">
+                      {stats.levelRequests} level request(s) to confirm
+                    </Link>
+                  </li>
+                ) : null}
+                {(stats.pendingSubmissions ?? 0) > 0 ? (
+                  <li>
+                    <Link href="/admin/quests" className="font-medium text-primary hover:underline">
+                      {stats.pendingSubmissions} quest submission(s) to review (XP for the leaderboard)
+                    </Link>
+                  </li>
+                ) : null}
+              </ul>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard

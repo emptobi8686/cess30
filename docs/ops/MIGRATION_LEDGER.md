@@ -25,6 +25,7 @@ Paste the full Local/Remote table below, with date and operator name.
 | 2026-11-23 | same | Applied `014`–`038` in order, one transaction each, no errors. Versions renumbered from connector timestamps to `014`…`038` so `supabase migration list` matches the repo. |
 | 2026-11-23 | same | Post-checks: every public table has RLS; no legacy admin-only policies left on courses/offerings/lectures/announcements/quests; all courses and profiles have `department_id`; backfill queued 1 review item (`profile_no_matric`). No academic session exists yet, so no placements were created. |
 | 2026-11-24 | same | Scheduler set up (not a migration): `pg_cron` and `pg_net` enabled; Vault secrets `notifications_app_url` (https://cess30.vercel.app/api/cron/notifications) and `notifications_cron_secret`; job `blueprint-notification-dispatch` every minute. `040_tutorials` NOT applied (owner declined for now). |
+| 2026-11-24 | same | `041_level_claims_count` (a requested level counts for level content) and `042_profile_backfill` (profiles for pre-030 accounts) written and tested locally; NOT yet applied. Both are independent of 040 and safe to apply before it. |
 | 2026-11-24 | same | Applied `039_library` (version renumbered to `039`). Checks: `library` bucket private, 0 storage policies on it, all `library_*` tables have RLS, `search_library` runs. |
 
 ## Static evidence (recorded 2026-11-23)
