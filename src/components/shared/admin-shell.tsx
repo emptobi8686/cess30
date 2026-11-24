@@ -17,6 +17,7 @@ import {
   Users,
   UsersRound,
   Library,
+  PlayCircle,
 } from "lucide-react";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const NAV_ICONS = {
   Courses: BookOpen,
   Academic: GraduationCap,
   Library: Library,
+  Tutorials: PlayCircle,
   Staff: UsersRound,
 } as const;
 

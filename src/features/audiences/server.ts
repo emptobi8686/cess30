@@ -29,7 +29,7 @@ const SAFE = ["You cannot target that audience.", "You cannot change who sees th
 
 /** Replaces an item's audiences through the replace_audiences RPC (scope-checked in the database). */
 export async function saveAudiences(
-  table: "announcement_audiences" | "quest_audiences" | "library_resource_audiences",
+  table: "announcement_audiences" | "quest_audiences" | "library_resource_audiences" | "tutorial_audiences",
   ownerId: string,
   audiences: AudienceInput[]
 ): Promise<{ ok: true } | { ok: false; error: string }> {

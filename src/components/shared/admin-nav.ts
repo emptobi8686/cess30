@@ -8,6 +8,7 @@ export const ADMIN_NAV = [
   { label: "Courses", href: "/admin/courses", adminOnly: false },
   { label: "Academic", href: "/admin/academic", adminOnly: false },
   { label: "Library", href: "/admin/library", adminOnly: false },
+  { label: "Tutorials", href: "/admin/tutorials", adminOnly: false },
   { label: "Staff", href: "/admin/staff", adminOnly: true },
 ] as const;
 
