@@ -21,6 +21,7 @@ describe("routeAccessLevel", () => {
     ["/study-planner", "full"],
     ["/quests", "full"],
     ["/leaderboard", "full"],
+    ["/library", "full"],
     ["/admin", "staff"],
     ["/admin/quests", "staff"],
     ["/admin/verifications", "admin"],

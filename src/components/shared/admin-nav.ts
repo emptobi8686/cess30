@@ -7,6 +7,7 @@ export const ADMIN_NAV = [
   { label: "Quests", href: "/admin/quests", adminOnly: false },
   { label: "Courses", href: "/admin/courses", adminOnly: false },
   { label: "Academic", href: "/admin/academic", adminOnly: false },
+  { label: "Library", href: "/admin/library", adminOnly: false },
   { label: "Staff", href: "/admin/staff", adminOnly: true },
 ] as const;
 

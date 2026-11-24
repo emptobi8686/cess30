@@ -16,6 +16,7 @@ import {
   UserRound,
   Users,
   UsersRound,
+  Library,
 } from "lucide-react";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ const NAV_ICONS = {
   Quests: Trophy,
   Courses: BookOpen,
   Academic: GraduationCap,
+  Library: Library,
   Staff: UsersRound,
 } as const;
 

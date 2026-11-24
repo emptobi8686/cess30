@@ -54,3 +54,12 @@ describe("securityHeaders", () => {
     assert.ok(!devNames.includes("Strict-Transport-Security"));
   });
 });
+
+describe("library PDF preview framing (P8)", () => {
+  test("app headers allow frames only from self and the project's Supabase storage", () => {
+    const headers = securityHeaders({ supabaseUrl: "https://x.supabase.co", production: true });
+    const csp = headers.find((h) => h.key === "Content-Security-Policy")!.value;
+    assert.equal(directive(csp, "frame-src"), "frame-src 'self' https://x.supabase.co");
+    assert.equal(directive(csp, "frame-ancestors"), "frame-ancestors 'none'");
+  });
+});

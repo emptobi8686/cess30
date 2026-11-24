@@ -16,6 +16,7 @@ import {
   Settings,
   Trophy,
   UserRound,
+  Library as LibraryIcon,
 } from "lucide-react";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ const navItems = [
   { label: "Announcements", href: "/announcements", icon: Megaphone },
   { label: "Quests", href: "/quests", icon: Trophy },
   { label: "Leaderboard", href: "/leaderboard", icon: Medal },
+  { label: "Library", href: "/library", icon: LibraryIcon },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

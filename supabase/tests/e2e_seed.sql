@@ -87,3 +87,24 @@ select 'Legacy level notice', 'Posted before levels existed.', 'level', p.id, tr
 from public.profiles p where p.matric_number = '900000005'
 and not exists (select 1 from public.announcements where title = 'Legacy level notice');
 select public.run_legacy_backfill();
+
+-- Library (P8): a published level-200 resource. Its file row exists for publishing rules;
+-- the storage object is not uploaded in CI, so the journey covers search, detail,
+-- bookmarks, reports and access denial (404), not the signed download itself.
+insert into public.library_resources (id, title, description, resource_type, level_code, copyright_basis, tags, created_by)
+select '00000000-0000-0000-0000-0000000e2e01', 'Beam Theory Notes', 'Bending moments and shear in simply supported beams.',
+       'course_notes', '200', 'own_work', array['beams', 'statics'], p.id
+from public.profiles p where p.matric_number = '900000005'
+on conflict (id) do nothing;
+insert into public.library_files (id, resource_id, version, storage_path, mime_type, size_bytes, original_filename, uploaded_by, scan_status)
+select '00000000-0000-0000-0000-0000000e2e02', '00000000-0000-0000-0000-0000000e2e01', 1,
+       'resources/00000000-0000-0000-0000-0000000e2e01/00000000-0000-0000-0000-0000000e2e02.pdf',
+       'application/pdf', 1024, 'beam-theory.pdf', created_by, 'not_scanned'
+from public.library_resources where id = '00000000-0000-0000-0000-0000000e2e01'
+on conflict (id) do nothing;
+insert into public.library_resource_audiences (resource_id, audience_kind, level_code)
+select '00000000-0000-0000-0000-0000000e2e01', 'level', '200'
+where not exists (select 1 from public.library_resource_audiences where resource_id = '00000000-0000-0000-0000-0000000e2e01');
+update public.library_resources
+set current_file_id = '00000000-0000-0000-0000-0000000e2e02', status = 'published', published_by = created_by
+where id = '00000000-0000-0000-0000-0000000e2e01' and status = 'draft';

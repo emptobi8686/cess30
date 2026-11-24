@@ -84,6 +84,8 @@ export const config = {
     "/announcements/:path*",
     "/quests/:path*",
     "/leaderboard/:path*",
+    "/library/:path*",
+    "/welcome/:path*",
     "/settings/:path*",
     "/notifications/:path*",
     "/admin/:path*",

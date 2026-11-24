@@ -51,7 +51,15 @@ export function buildCsp(options: CspOptions): string {
 
 export function securityHeaders(options: { supabaseUrl: string | undefined; production: boolean }) {
   const headers = [
-    { key: "Content-Security-Policy", value: buildCsp({ supabaseUrl: options.supabaseUrl, development: !options.production }) },
+    {
+      key: "Content-Security-Policy",
+      value: buildCsp({
+        supabaseUrl: options.supabaseUrl,
+        development: !options.production,
+        // Library PDF previews: /api/library/{id}/file redirects to a signed Storage URL.
+        extraFrameSrc: ["'self'", ...(origins(options.supabaseUrl).http ? [origins(options.supabaseUrl).http as string] : [])],
+      }),
+    },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "X-Frame-Options", value: "DENY" },

@@ -28,7 +28,7 @@ const READ_ROUTES = [
   "/welcome",
 ] as const;
 
-const FULL_ROUTES = ["/study-planner", "/quests", "/leaderboard"] as const;
+const FULL_ROUTES = ["/study-planner", "/quests", "/leaderboard", "/library"] as const;
 
 /** Admin areas a course representative never reaches (decision 0004 guardrails). */
 const ADMIN_ONLY_ROUTES = ["/admin/verifications", "/admin/staff", "/admin/academic/sessions", "/admin/academic/review"] as const;
