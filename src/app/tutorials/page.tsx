@@ -24,9 +24,8 @@ export default async function TutorialsPage(props: PageProps<"/tutorials">) {
   const q = str("q").slice(0, 100);
   const levelParam = str("level");
   const level = levelParam === "all" ? null : (LEVEL_CODES as readonly string[]).includes(levelParam) ? levelParam : academic.levelCode;
-  const aiOnly = str("ai") === "1";
   const [results, mine] = await Promise.all([
-    searchTutorials({ q, level, source: aiOnly ? "ai_generated" : null }),
+    searchTutorials({ q, level, source: null }),
     getMyTutorialState(user.id),
   ]);
   const saved = results.filter((t) => mine.saved.has(t.id));
@@ -48,7 +47,6 @@ export default async function TutorialsPage(props: PageProps<"/tutorials">) {
                 {LEVEL_CODES.map((l) => <option key={l} value={l}>Level {l}</option>)}
               </select>
             </div>
-            <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" name="ai" value="1" defaultChecked={aiOnly} /> AI-generated only</label>
             <Button type="submit">Search</Button>
           </form>
         </CardContent></Card>
@@ -62,7 +60,7 @@ export default async function TutorialsPage(props: PageProps<"/tutorials">) {
                   <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                     <div>
                       <Link href={`/tutorials/${t.id}`} className="font-medium hover:underline">{t.title}</Link>
-                      <p className="text-xs text-muted-foreground">{t.topic}{minutes(t.duration_seconds)}{t.is_ai_generated ? " · AI-generated" : ""}</p>
+                      <p className="text-xs text-muted-foreground">{t.topic}{minutes(t.duration_seconds)}</p>
                     </div>
                     {p?.status === "completed" ? <span className="text-xs font-medium text-primary">Completed</span> : null}
                   </li>

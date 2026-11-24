@@ -25,7 +25,7 @@ export default async function AdminTutorialsPage(props: PageProps<"/admin/tutori
     <AdminShell currentLabel="Tutorials">
       <div className="space-y-6">
         <PageHeader eyebrow="Admin · Tutorials" title="Tutorials"
-          description="Curated videos for each level. AI-generated videos need approval from a different reviewer before students see them." />
+          description="Curated videos for each level. Someone other than the creator reviews each one before students see it." />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <nav aria-label="Tutorial queues" className="flex flex-wrap gap-2 text-sm">
             {TABS.map((t) => (
@@ -57,7 +57,7 @@ export default async function AdminTutorialsPage(props: PageProps<"/admin/tutori
                 <Link href={`/admin/tutorials/${t.id}`} className="font-medium hover:underline">{t.title}</Link>
                 <p className="text-xs text-muted-foreground">
                   {t.topic} · {audienceBadge(t.tutorial_audiences)} · review: {t.review_status.replace("_", " ")}
-                  {t.is_ai_generated ? " · AI-generated" : ""}{t.link_status !== "ok" && t.link_status !== "unchecked" ? ` · link: ${t.link_status.replace("_", " ")}` : ""}
+{t.link_status !== "ok" && t.link_status !== "unchecked" ? ` · link: ${t.link_status.replace("_", " ")}` : ""}
                 </p>
               </li>
             ))}

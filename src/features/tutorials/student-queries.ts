@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { reviewerName, TUTORIAL_SELECT, type TutorialRow } from "./queries";
+import { TUTORIAL_SELECT, type TutorialRow } from "./queries";
 
 export async function searchTutorials(f: { q: string; level: string | null; source: string | null }): Promise<TutorialRow[]> {
   const supabase = await createServerSupabaseClient();
@@ -29,7 +29,7 @@ export async function getTutorialForStudent(id: string) {
   const { data } = await supabase.from("tutorials").select(TUTORIAL_SELECT).eq("id", id).eq("status", "published").maybeSingle();
   if (!data) return null;
   const tutorial = data as unknown as TutorialRow;
-  return { tutorial, reviewer: tutorial.is_ai_generated ? await reviewerName(tutorial.academic_reviewer_id) : null };
+  return { tutorial };
 }
 
 export async function getPlaylist(id: string) {
@@ -37,11 +37,11 @@ export async function getPlaylist(id: string) {
   const { data: playlist } = await supabase.from("tutorial_playlists").select("id, title, description, is_official, owner_id").eq("id", id).maybeSingle();
   if (!playlist) return null;
   const { data: items } = await supabase.from("tutorial_playlist_items")
-    .select("position, tutorials ( id, title, topic, duration_seconds, is_ai_generated )")
+    .select("position, tutorials ( id, title, topic, duration_seconds )")
     .eq("playlist_id", id).order("position");
   return {
     playlist,
-    items: ((items ?? []) as unknown as Array<{ position: number; tutorials: { id: string; title: string; topic: string; duration_seconds: number | null; is_ai_generated: boolean } | null }>)
+    items: ((items ?? []) as unknown as Array<{ position: number; tutorials: { id: string; title: string; topic: string; duration_seconds: number | null } | null }>)
       .filter((i) => i.tutorials),
   };
 }

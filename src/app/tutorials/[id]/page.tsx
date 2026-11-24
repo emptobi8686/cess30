@@ -5,10 +5,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { VideoEmbed } from "@/components/shared/video-embed";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AI_LABEL } from "@/features/tutorials/schema";
 import { getMyTutorialState, getTutorialForStudent } from "@/features/tutorials/student-queries";
 import { embedUrlFor } from "@/features/tutorials/video-url";
-import { formatTimestamp } from "@/lib/dates";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { AddToPlaylist, CompletionToggle, ReportTutorial, SaveToggle } from "../_components/tutorial-actions";
 
@@ -21,7 +19,7 @@ export default async function TutorialPage(props: PageProps<"/tutorials/[id]">) 
   if (!UUID.test(id)) notFound();
   const [detail, mine] = await Promise.all([getTutorialForStudent(id), getMyTutorialState(user.id)]);
   if (!detail) notFound();
-  const { tutorial: t, reviewer } = detail;
+  const { tutorial: t } = detail;
   const embed = t.embed_allowed && t.provider !== "other_allowlisted" && t.provider_video_id
     ? embedUrlFor(t.provider === "youtube" ? { provider: "youtube", id: t.provider_video_id } : { provider: "vimeo", id: t.provider_video_id })
     : null;
@@ -31,11 +29,6 @@ export default async function TutorialPage(props: PageProps<"/tutorials/[id]">) 
     <DashboardShell currentLabel="Tutorials">
       <div className="space-y-6">
         <PageHeader eyebrow={`Tutorials · ${t.topic}`} title={t.title} description={t.description ?? ""} />
-        {t.is_ai_generated ? (
-          <p role="note" className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-            {AI_LABEL(reviewer ?? "a department reviewer", t.reviewed_at ? formatTimestamp(t.reviewed_at, { day: "numeric", month: "long", year: "numeric" }) : "—")}
-          </p>
-        ) : null}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-3 lg:col-span-2">
             {embed ? <VideoEmbed embedUrl={embed} title={t.title} /> : null}

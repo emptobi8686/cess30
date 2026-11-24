@@ -2,11 +2,13 @@
 --
 -- Curated video tutorials (YouTube, Vimeo, allow-listed sites) with audiences (E4 model),
 -- saves, playlists, progress and reports. Only provider IDs are stored for embeds; the app
--- renders fixed embed templates. AI-generated content follows the audit defaults for
--- decision 0004 items 6-7 (PROVISIONAL): a different person must review it (a department
--- administrator, or the course representative for its level), the AI label is always
--- shown, any edit to a published AI tutorial sends it back to review, and two distinct
--- "inaccurate" reports hide it until re-reviewed.
+-- renders fixed embed templates. Every tutorial is reviewed by someone other than its
+-- creator before it can be published.
+--
+-- AI-generated videos are DISABLED for now (owner decision, 2026-11-24): the
+-- tutorials_ai_disabled constraint refuses them. The AI columns and the dormant AI rules
+-- (different authorised reviewer, re-review on edit, auto-hide on two "inaccurate"
+-- reports) stay so the feature can be re-enabled later by dropping that one constraint.
 
 create or replace function public.tutorial_objectives_text(p_items text[])
 returns text language sql immutable set search_path = pg_catalog
@@ -69,7 +71,8 @@ create table if not exists public.tutorials (
     or (provider = 'vimeo' and provider_video_id ~ '^\d{6,12}$')
     or (provider = 'other_allowlisted' and provider_video_id is null)
   ),
-  constraint tutorials_ai_fields check (not is_ai_generated or (ai_tool is not null and length(trim(coalesce(ai_disclosure, ''))) > 0))
+  constraint tutorials_ai_fields check (not is_ai_generated or (ai_tool is not null and length(trim(coalesce(ai_disclosure, ''))) > 0)),
+  constraint tutorials_ai_disabled check (not is_ai_generated and source_type <> 'ai_generated')
 );
 create index if not exists tutorials_search_idx on public.tutorials using gin (search);
 create index if not exists tutorials_status_idx on public.tutorials (status, published_at desc);

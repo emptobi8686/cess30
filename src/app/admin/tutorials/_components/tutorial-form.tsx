@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { AudiencePicker } from "@/components/shared/audience-picker";
 import { FormStatus } from "@/components/shared/form-status";
 import { useAllowedLevels, useStaffAccess } from "@/components/shared/staff-access";
@@ -17,7 +17,6 @@ const SELECT = "h-9 w-full rounded-lg border border-input bg-background px-2 tex
 
 export function TutorialForm({ tutorial, courses }: { tutorial?: TutorialRow; courses: Array<{ id: string; label: string; level: string }> }) {
   const [state, action, pending] = useActionState(tutorial ? updateTutorialAction : createTutorialAction, IDLE_ACTION_STATE);
-  const [ai, setAi] = useState(tutorial?.is_ai_generated ?? false);
   const { isAdmin } = useStaffAccess();
   const levels = useAllowedLevels();
   return (
@@ -66,26 +65,6 @@ export function TutorialForm({ tutorial, courses }: { tutorial?: TutorialRow; co
         <Textarea id="tu-objectives" name="learning_objectives" required defaultValue={tutorial?.learning_objectives.join("\n") ?? ""} />
       </div>
       <AudiencePicker name="audiences" id="tu-audience" defaultValue={toAudienceInputs(tutorial?.tutorial_audiences)} />
-      <fieldset className="space-y-3 rounded-lg border border-border/70 p-3">
-        <legend className="px-1 text-sm font-medium">AI-generated content</legend>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_ai_generated" checked={ai} onChange={(e) => setAi(e.target.checked)} />
-          This video was generated with AI
-        </label>
-        {ai ? (
-          <>
-            <div className="space-y-1.5">
-              <Label htmlFor="tu-ai-tool">AI tool</Label>
-              <Input id="tu-ai-tool" name="ai_tool" maxLength={120} required defaultValue={tutorial?.ai_tool ?? ""} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tu-ai-disclosure">How AI was used</Label>
-              <Textarea id="tu-ai-disclosure" name="ai_disclosure" maxLength={1000} required defaultValue={tutorial?.ai_disclosure ?? ""} />
-            </div>
-            <p className="text-xs text-muted-foreground">A different reviewer must approve it, students always see the AI label, and any later edit sends it back to review.</p>
-          </>
-        ) : null}
-      </fieldset>
       <Button type="submit" disabled={pending}>{tutorial ? "Save changes" : "Create draft"}</Button>
       <FormStatus state={state} />
     </form>

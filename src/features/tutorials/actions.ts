@@ -15,7 +15,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SAFE = [
   "This tutorial must be reviewed and approved before publishing.",
   "Choose who should see this tutorial before publishing it.",
-  "AI-generated tutorials need an approval from a different, authorised reviewer.",
   "You cannot review your own content.",
   "You cannot review this tutorial.",
   "Add review notes of at least 8 characters.",
@@ -45,9 +44,6 @@ function read(formData: FormData) {
     topic: get("topic") ?? "",
     learning_objectives: get("learning_objectives") ?? "",
     video_url: get("video_url") ?? "",
-    is_ai_generated: get("is_ai_generated"),
-    ai_tool: get("ai_tool"),
-    ai_disclosure: get("ai_disclosure"),
     duration_minutes: get("duration_minutes"),
     course_id: get("course_id"),
     level_code: get("level_code"),
@@ -83,10 +79,11 @@ async function buildRow(formData: FormData) {
       learning_objectives: d.learning_objectives,
       course_id: d.course_id,
       level_code: d.level_code,
-      is_ai_generated: d.is_ai_generated,
-      ai_tool: d.is_ai_generated ? d.ai_tool : null,
-      ai_disclosure: d.is_ai_generated ? d.ai_disclosure : null,
-      source_type: d.is_ai_generated ? "ai_generated" : video.provider === "other_allowlisted" ? "external_platform" : video.provider === "youtube" ? "youtube" : "external_platform",
+      // AI-generated videos are disabled for now (the database refuses them too).
+      is_ai_generated: false,
+      ai_tool: null,
+      ai_disclosure: null,
+      source_type: video.provider === "youtube" ? "youtube" : "external_platform",
       provider: video.provider,
       provider_video_id: video.provider === "other_allowlisted" ? null : video.id,
       external_url: watchUrlFor(video),
@@ -147,7 +144,7 @@ export async function updateTutorialAction(_previous: ActionState, formData: For
       return errorState(message(error, "The tutorial could not be saved."));
     }
     revalidateTutorials(id);
-    return successState(data.status === "in_review" ? "Saved. AI-generated content goes back to review after edits." : "Saved.");
+    return successState("Saved.");
   } catch (error) {
     return errorState(accessErrorMessage(error, "The tutorial could not be saved."));
   }

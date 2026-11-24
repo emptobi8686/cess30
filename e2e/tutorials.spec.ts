@@ -5,12 +5,11 @@ import { hasSeededSupabase, signIn } from "./support/auth";
 test.describe("tutorials (P9)", () => {
   test.skip(!hasSeededSupabase, "requires the seeded Supabase stack (E2E_SUPABASE=1)");
 
-  test("embeds use the privacy-enhanced player and the AI label is shown", async ({ page }) => {
+  test("embeds use the privacy-enhanced player", async ({ page }) => {
     await signIn(page, "placed@e2e.test");
     await page.goto("/tutorials/00000000-0000-0000-0000-0000000e2e12");
     await expect(page.locator("iframe")).toHaveAttribute("src", /^https:\/\/www\.youtube-nocookie\.com\/embed\//);
-    await expect(page.getByRole("note")).toContainText("AI-generated explanation · Reviewed by Ada Admin on");
-    await expect(page.getByRole("note")).toContainText("Supplementary material — verify against your lecture notes.");
+    await expect(page.getByRole("note")).toHaveCount(0);
   });
 
   test("non-embeddable videos link out safely", async ({ page }) => {

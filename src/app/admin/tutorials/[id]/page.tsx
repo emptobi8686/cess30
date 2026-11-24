@@ -32,12 +32,6 @@ export default async function AdminTutorialPage(props: PageProps<"/admin/tutoria
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-base">Review</CardTitle></CardHeader>
               <CardContent className="space-y-3 text-sm">
-                {t.is_ai_generated ? (
-                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-                    <p className="font-medium">AI-generated ({t.ai_tool})</p>
-                    <p className="text-muted-foreground">{t.ai_disclosure}</p>
-                  </div>
-                ) : null}
                 {t.review_notes ? <p className="text-muted-foreground">Last notes: {t.review_notes}</p> : null}
                 {isCreator ? (
                   <p className="text-muted-foreground">You created this tutorial, so another reviewer must approve it.</p>
