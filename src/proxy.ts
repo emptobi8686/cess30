@@ -85,6 +85,7 @@ export const config = {
     "/quests/:path*",
     "/leaderboard/:path*",
     "/library/:path*",
+    "/tutorials/:path*",
     "/welcome/:path*",
     "/settings/:path*",
     "/notifications/:path*",

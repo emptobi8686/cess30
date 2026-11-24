@@ -1,24 +1,14 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   createDueReminderNotifications,
 } from "@/lib/notifications/delivery";
 import { dispatchPendingPushNotifications } from "@/lib/notifications/push";
+import { isAuthorizedCron } from "@/lib/cron/auth";
 
 export const runtime = "nodejs";
 
-function isAuthorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const authorization = request.headers.get("authorization");
-  if (!secret || !authorization) return false;
-
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const received = Buffer.from(authorization);
-  return expected.length === received.length && timingSafeEqual(expected, received);
-}
-
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isAuthorizedCron(request.headers.get("authorization"))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 

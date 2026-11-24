@@ -22,6 +22,7 @@ describe("routeAccessLevel", () => {
     ["/quests", "full"],
     ["/leaderboard", "full"],
     ["/library", "full"],
+    ["/tutorials", "full"],
     ["/admin", "staff"],
     ["/admin/quests", "staff"],
     ["/admin/verifications", "admin"],

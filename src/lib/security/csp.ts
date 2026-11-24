@@ -57,7 +57,14 @@ export function securityHeaders(options: { supabaseUrl: string | undefined; prod
         supabaseUrl: options.supabaseUrl,
         development: !options.production,
         // Library PDF previews: /api/library/{id}/file redirects to a signed Storage URL.
-        extraFrameSrc: ["'self'", ...(origins(options.supabaseUrl).http ? [origins(options.supabaseUrl).http as string] : [])],
+        extraFrameSrc: [
+          "'self'",
+          ...(origins(options.supabaseUrl).http ? [origins(options.supabaseUrl).http as string] : []),
+          // Tutorials (P9): fixed embed templates only.
+          "https://www.youtube-nocookie.com",
+          "https://player.vimeo.com",
+        ],
+        extraImgSrc: ["https://i.ytimg.com"],
       }),
     },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

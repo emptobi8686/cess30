@@ -59,7 +59,19 @@ describe("library PDF preview framing (P8)", () => {
   test("app headers allow frames only from self and the project's Supabase storage", () => {
     const headers = securityHeaders({ supabaseUrl: "https://x.supabase.co", production: true });
     const csp = headers.find((h) => h.key === "Content-Security-Policy")!.value;
-    assert.equal(directive(csp, "frame-src"), "frame-src 'self' https://x.supabase.co");
+    assert.ok(directive(csp, "frame-src").startsWith("frame-src 'self' https://x.supabase.co"));
     assert.equal(directive(csp, "frame-ancestors"), "frame-ancestors 'none'");
+  });
+});
+
+describe("tutorial embeds (P9)", () => {
+  test("frames allow the privacy-enhanced YouTube host and Vimeo player only", () => {
+    const headers = securityHeaders({ supabaseUrl: "https://x.supabase.co", production: true });
+    const csp = headers.find((h) => h.key === "Content-Security-Policy")!.value;
+    const frames = directive(csp, "frame-src");
+    assert.ok(frames.includes("https://www.youtube-nocookie.com"));
+    assert.ok(frames.includes("https://player.vimeo.com"));
+    assert.ok(!/(^| )https:\/\/www\.youtube\.com( |$)/.test(frames));
+    assert.ok(directive(csp, "img-src").includes("https://i.ytimg.com"));
   });
 });
