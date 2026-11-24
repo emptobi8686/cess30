@@ -140,7 +140,6 @@ export function readZipEntryNames(buf: Uint8Array): string[] | null {
 /** Display-only filename: no paths or control characters, collapsed spaces, max 120 chars keeping the extension. */
 export function safeDisplayFilename(name: string): string {
   const base = (name.split(/[\\/]/).pop() ?? "")
-    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
