@@ -69,7 +69,7 @@ export default async function AnnouncementsPage() {
         {!fetchError && announcements.length === 0 ? (
           <EmptyState
             title="No announcements available"
-            description="There are no published announcements right now. Check back when the department or course representative posts an update."
+            description="Nothing has been posted for you yet. Announcements show up when they are sent to everyone, to your level, or to a course you take. If you expected one, check that your level is set on your dashboard and your account is verified."
           />
         ) : (
           <div className="space-y-4">

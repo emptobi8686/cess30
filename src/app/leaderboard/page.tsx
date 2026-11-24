@@ -99,7 +99,7 @@ export default async function LeaderboardPage(props: PageProps<"/leaderboard">) 
         ) : entries.length === 0 ? (
           <EmptyState
             title="No XP earned yet"
-            description="Complete quests to start earning XP and appear on the leaderboard."
+            description="The leaderboard fills up when quest submissions are approved. Complete a quest, and you will appear here once a rep or admin approves it."
           />
         ) : (
           <Card className="border-border/80 bg-card">

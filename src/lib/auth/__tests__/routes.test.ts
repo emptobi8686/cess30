@@ -46,13 +46,13 @@ describe("routeDecision", () => {
     assert.deepEqual(routeDecision(ctx("verified"), "/study-planner"), allow);
   });
   test("pending student on a full route goes to the dashboard", () => {
-    assert.deepEqual(routeDecision(ctx("pending"), "/study-planner"), to("/dashboard"));
+    assert.deepEqual(routeDecision(ctx("pending"), "/study-planner"), to("/dashboard?locked=verification"));
   });
   test("rejected student may read the profile page", () => {
     assert.deepEqual(routeDecision(ctx("rejected"), "/settings/profile"), allow);
   });
   test("rejected student on quests goes to the dashboard", () => {
-    assert.deepEqual(routeDecision(ctx("rejected"), "/quests"), to("/dashboard"));
+    assert.deepEqual(routeDecision(ctx("rejected"), "/quests"), to("/dashboard?locked=verification"));
   });
   test("suspended student on any protected route goes to /suspended", () => {
     for (const path of ["/dashboard", "/timetable", "/study-planner", "/settings"]) {

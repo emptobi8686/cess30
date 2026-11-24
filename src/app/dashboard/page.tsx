@@ -41,7 +41,8 @@ import { getActiveQuests, getUserXpSummary } from "@/features/quests/queries";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: PageProps<"/dashboard">) {
+  const { locked } = await props.searchParams;
   const user = await requireUserSession();
   const supabase = await createServerSupabaseClient();
 
@@ -94,6 +95,17 @@ export default async function DashboardPage() {
           title={firstName ? `Welcome back, ${firstName}.` : "Your workspace is ready."}
           description={headline ?? "Your Civil Engineering academic dashboard."}
         />
+
+        {locked === "verification" && verificationStatus !== "verified" ? (
+          <p
+            role="status"
+            data-testid="locked-notice"
+            className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm"
+          >
+            That page opens once an admin verifies your account. Until then you won&apos;t see
+            announcements, quests or the leaderboard. Check the status below.
+          </p>
+        ) : null}
 
         {/* Verification & Profile Status Banner */}
         <VerificationBanner

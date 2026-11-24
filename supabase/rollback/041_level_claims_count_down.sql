@@ -1,0 +1,3 @@
+-- Reverse of 041_level_claims_count.sql: re-run the definitions of audience_matches_for and
+-- lecture_reminder_candidates from 038_notification_targeting.sql, and can_view_lecture from
+-- 035_content_audiences.sql (confirmed placements only).

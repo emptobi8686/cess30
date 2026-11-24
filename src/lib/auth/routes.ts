@@ -17,7 +17,7 @@ export type RouteLevel = "public" | "read" | "full" | "staff" | "admin" | "suspe
 
 export type RouteDecision =
   | { action: "allow" }
-  | { action: "redirect"; to: "/suspended" | "/access-denied" | "/dashboard" };
+  | { action: "redirect"; to: "/suspended" | "/access-denied" | "/dashboard" | "/dashboard?locked=verification" };
 
 const READ_ROUTES = [
   "/dashboard",
@@ -67,7 +67,8 @@ export function routeDecision(ctx: AccessContext, pathname: string): RouteDecisi
         : { action: "allow" };
     case "full":
       if (studentLevel === "none") return { action: "redirect", to: "/suspended" };
-      return studentLevel === "full" ? { action: "allow" } : { action: "redirect", to: "/dashboard" };
+      // Pending/rejected students land on the dashboard with an explanation, not silently.
+      return studentLevel === "full" ? { action: "allow" } : { action: "redirect", to: "/dashboard?locked=verification" };
   }
 }
 
