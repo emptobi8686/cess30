@@ -4,7 +4,7 @@
 
 | Secret | Locations | Rotated on | By | Status |
 |---|---|---|---|---|
-| `CRON_SECRET` | Host environment; Supabase Vault `notifications_cron_secret` | – | – | **OPEN, required** (historically exposed; treat as compromised) |
+| `CRON_SECRET` | Vercel `cess30` (Production + Preview); Supabase Vault `notifications_cron_secret` | 2026-11-24 | Claude session, at the owner's request | **ROTATED** (new 40-byte random value; old value no longer valid). Takes effect in Vercel on the next deploy. |
 | `VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Host environment | – | – | OPEN, rotate if any doubt (rotating invalidates existing push subscriptions) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Host environment (server-only) | – | – | OPEN, confirm never exposed |
 | Google OAuth client secret | Supabase Auth provider settings | – | – | OPEN, confirm never exposed |
