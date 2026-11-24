@@ -1,6 +1,8 @@
 import "server-only";
 
+import { cache } from "react";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { resolveAccess, type AccessContext, type CapabilityRow } from "@/lib/auth/access";
 import { logServerError } from "@/lib/errors";
@@ -18,14 +20,11 @@ export async function requireAdminPage(): Promise<AccessContext> {
   return access;
 }
 
-export async function getAccessContext(): Promise<AccessContext | null> {
+/** Loaded once per request (React cache) and shared by layouts, pages and guards. */
+export const getAccessContext = cache(async (): Promise<AccessContext | null> => {
+  const user = await getCurrentUser();
+  if (!user) return null;
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) return null;
 
   const [
     { data: roleRows, error: rolesError },
@@ -43,4 +42,4 @@ export async function getAccessContext(): Promise<AccessContext | null> {
   if (capabilityError) logServerError("auth.myCapabilities", capabilityError);
 
   return resolveAccess(user.id, roleRows ?? [], profile ?? null, (capabilityRows ?? []) as CapabilityRow[]);
-}
+});
