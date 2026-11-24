@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Plus, Sparkles, Repeat } from "lucide-react";
+import { Loader2, Plus, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,7 +27,6 @@ import type {
   Course,
   StudySessionWithCourse,
   ReminderPreference,
-  RecurrencePattern,
 } from "@/types";
 
 type Props = {

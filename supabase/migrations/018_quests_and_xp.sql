@@ -62,7 +62,7 @@ create table if not exists public.quest_submissions (
 );
 
 comment on table public.quest_submissions is 'Student evidence submissions for quests, reviewed and decided by staff.';
-comment on column public.quest_submissions.evidence_url is 'URL to the student\'s evidence of quest completion.';
+comment on column public.quest_submissions.evidence_url is 'URL to the student''s evidence of quest completion.';
 comment on column public.quest_submissions.status is 'pending, approved, or rejected. Only pending submissions can be reviewed.';
 comment on column public.quest_submissions.rejection_reason is 'Required when status is rejected; minimum 12 characters.';
 

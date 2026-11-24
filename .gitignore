@@ -45,3 +45,8 @@ AI_HANDOFF.md
 docs/PHASE_7_5_DEPLOYMENT_GUIDE.md
 docs/VERIFICATION_SECURITY_TESTING.md
 AI_HANDOFF.md
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/

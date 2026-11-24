@@ -340,3 +340,56 @@ export function formatTimestamp(
     timeZone: LAGOS_TZ,
   });
 }
+
+const LAGOS_DATETIME_LOCAL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+/**
+ * Converts an <input type="datetime-local"> value, interpreted as Africa/Lagos
+ * wall-clock time, into a UTC ISO instant. Throws on malformed input.
+ */
+export function lagosDateTimeLocalToUtcIso(value: string): string {
+  const match = LAGOS_DATETIME_LOCAL.exec(value.trim());
+  if (!match) throw new Error("Expected a date and time (YYYY-MM-DDTHH:mm).");
+
+  const [, y, mo, d, h, mi, s = "0"] = match;
+  const wallClockAsUtc = Date.UTC(+y, +mo - 1, +d, +h, +mi, +s);
+
+  // Offset of Africa/Lagos from UTC at that moment, derived from Intl so it stays
+  // correct even if the zone's rules ever change.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: LAGOS_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(wallClockAsUtc));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((p) => p.type === type)?.value);
+  const lagosAsUtc = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"));
+  const offsetMs = lagosAsUtc - wallClockAsUtc;
+
+  const instant = new Date(wallClockAsUtc - offsetMs);
+  if (Number.isNaN(instant.getTime())) throw new Error("Invalid date and time.");
+  return instant.toISOString();
+}
+
+/** Renders a UTC instant as an Africa/Lagos <input type="datetime-local"> value ("" if absent/invalid). */
+export function utcIsoToLagosDateTimeLocal(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: LAGOS_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
+}

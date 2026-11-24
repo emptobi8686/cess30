@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { AUDIENCE_SELECT } from "@/features/audiences/schema";
 import type { Announcement } from "@/types";
 
 /**
@@ -15,7 +16,7 @@ export async function getPublishedAnnouncements(limit = 20): Promise<Announcemen
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("announcements")
-    .select("*")
+    .select(`*, announcement_audiences ( ${AUDIENCE_SELECT} )`)
     .eq("is_published", true)
     .lte("published_at", new Date().toISOString())
     .order("published_at", { ascending: false })

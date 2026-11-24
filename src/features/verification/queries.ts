@@ -1,5 +1,5 @@
-import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { requireAdmin } from "@/lib/auth/guards";
+import { buildVerificationSearchFilter } from "@/lib/postgrest";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type VerificationSubmission = {
@@ -16,19 +16,23 @@ export type VerificationSubmission = {
   created_at: string;
 };
 
+export const VERIFICATION_PAGE_SIZE = 50;
+
+const QUEUE_STATUSES = ["pending", "verified", "rejected", "suspended"] as const;
+
 export async function getVerificationQueue(options?: {
   status?: string;
   search?: string;
+  page?: number;
 }) {
-  const user = await requireUserSession();
-  const role = await getCurrentUserRole();
-
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
+  await requireAdmin();
 
   const supabase = await createServerSupabaseClient();
-  const selectedStatus = options?.status && options.status !== "all" ? options.status : "all";
+  const selectedStatus = QUEUE_STATUSES.includes(options?.status as (typeof QUEUE_STATUSES)[number])
+    ? (options?.status as string)
+    : "all";
+  const page = Math.max(1, Math.floor(options?.page ?? 1));
+  const from = (page - 1) * VERIFICATION_PAGE_SIZE;
   const searchQuery = options?.search?.trim() ?? "";
 
   let query = supabase
@@ -36,16 +40,16 @@ export async function getVerificationQueue(options?: {
     .select(
       "id, full_name, matric_number, department, level, avatar_url, verification_status, verification_reviewed_at, verification_reviewed_by, verification_rejection_reason, created_at"
     )
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, from + VERIFICATION_PAGE_SIZE);
 
   if (selectedStatus !== "all") {
     query = query.eq("verification_status", selectedStatus);
   }
 
-  if (searchQuery) {
-    query = query.or(
-      `full_name.ilike.%${searchQuery}%,matric_number.ilike.%${searchQuery}%`
-    );
+  const searchFilter = buildVerificationSearchFilter(searchQuery);
+  if (searchFilter) {
+    query = query.or(searchFilter);
   }
 
   const { data, error } = await query;
@@ -69,10 +73,10 @@ export async function getVerificationQueue(options?: {
       .eq("verification_status", "rejected"),
   ]);
 
-  void user;
-
   return {
-    items: (data ?? []) as VerificationSubmission[],
+    items: ((data ?? []) as VerificationSubmission[]).slice(0, VERIFICATION_PAGE_SIZE),
+    page,
+    hasNextPage: (data?.length ?? 0) > VERIFICATION_PAGE_SIZE,
     counts: {
       pending: counts[0].count ?? 0,
       verified: counts[1].count ?? 0,

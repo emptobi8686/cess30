@@ -1,7 +1,9 @@
 "use server";
 
+import { actionError } from "@/lib/errors";
+import { guardStudentAction } from "@/lib/auth/guards";
+
 import { revalidatePath } from "next/cache";
-import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   validateStudyDate,
@@ -10,6 +12,9 @@ import {
   detectConflicts,
   VALID_REMINDERS,
   VALID_PATTERNS,
+  firstSchemaIssue,
+  studySessionSchema,
+  studySessionUpdateSchema,
 } from "@/features/study-planner/validation";
 import type {
   ActionResult,
@@ -25,7 +30,9 @@ import type {
 export async function createStudySession(
   formData: FormData
 ): Promise<ActionResult<{ id: string; warnings?: string[] }>> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
 
   const title = (formData.get("title") as string)?.trim();
   const rawCourseId = (formData.get("course_id") as string)?.trim();
@@ -62,6 +69,17 @@ export async function createStudySession(
   if (title.length > 150) {
     return { ok: false, error: "Study title cannot exceed 150 characters." };
   }
+
+  const parsedCreate = studySessionSchema.safeParse({
+    title,
+    study_date: studyDate ?? "",
+    start_time: startTime ?? "",
+    end_time: endTime ?? "",
+    notes,
+    location,
+    course_id: courseId ?? "",
+  });
+  if (!parsedCreate.success) return { ok: false, error: firstSchemaIssue(parsedCreate.error) };
 
   const dateError = validateStudyDate(studyDate);
   if (dateError) return { ok: false, error: dateError };
@@ -152,7 +170,7 @@ export async function createStudySession(
       .single();
 
     if (insertError) {
-      return { ok: false, error: insertError.message };
+      return actionError("study-planner", insertError, "study");
     }
 
     revalidatePath("/study-planner");
@@ -189,7 +207,7 @@ export async function createStudySession(
     .single();
 
   if (singleError) {
-    return { ok: false, error: singleError.message };
+    return actionError("study-planner", singleError, "study");
   }
 
   revalidatePath("/study-planner");
@@ -212,7 +230,9 @@ export async function updateStudySession(
   formData: FormData,
   updateEntireSeries = false
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
 
   // Verify ownership
@@ -242,10 +262,15 @@ export async function updateStudySession(
     ? (rawReminder as ReminderPreference)
     : "15_min";
 
-  if (!title) return { ok: false, error: "Study goal/title is required." };
-
-  const timeError = validateStudyTimeRange(startTime, endTime);
-  if (timeError) return { ok: false, error: timeError };
+  const parsedUpdate = studySessionUpdateSchema.safeParse({
+    title: title ?? "",
+    start_time: startTime ?? "",
+    end_time: endTime ?? "",
+    notes,
+    location,
+    course_id: courseId ?? "",
+  });
+  if (!parsedUpdate.success) return { ok: false, error: firstSchemaIssue(parsedUpdate.error) };
 
   if (updateEntireSeries && existing.recurrence_id) {
     // Update all sessions in the series (preserving their individual dates)
@@ -263,7 +288,7 @@ export async function updateStudySession(
       .eq("recurrence_id", existing.recurrence_id)
       .eq("user_id", user.id);
 
-    if (updateSeriesError) return { ok: false, error: updateSeriesError.message };
+    if (updateSeriesError) return actionError("study-planner", updateSeriesError, "study");
   } else {
     // Single session update
     const dateError = validateStudyDate(studyDate);
@@ -284,7 +309,7 @@ export async function updateStudySession(
       .eq("id", sessionId)
       .eq("user_id", user.id);
 
-    if (updateError) return { ok: false, error: updateError.message };
+    if (updateError) return actionError("study-planner", updateError, "study");
   }
 
   revalidatePath("/study-planner");
@@ -300,7 +325,9 @@ export async function deleteStudySession(
   sessionId: string,
   deleteEntireSeries = false
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
 
   const { data: existing, error: fetchError } = await supabase
@@ -320,7 +347,7 @@ export async function deleteStudySession(
       .eq("recurrence_id", existing.recurrence_id)
       .eq("user_id", user.id);
 
-    if (deleteError) return { ok: false, error: deleteError.message };
+    if (deleteError) return actionError("study-planner", deleteError, "study");
   } else {
     const { error: deleteError } = await supabase
       .from("study_sessions")
@@ -328,7 +355,7 @@ export async function deleteStudySession(
       .eq("id", sessionId)
       .eq("user_id", user.id);
 
-    if (deleteError) return { ok: false, error: deleteError.message };
+    if (deleteError) return actionError("study-planner", deleteError, "study");
   }
 
   revalidatePath("/study-planner");
@@ -344,21 +371,26 @@ export async function toggleStudySessionCompleted(
   sessionId: string,
   completed: boolean
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
 
   const completedAt = completed ? new Date().toISOString() : null;
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("study_sessions")
     .update({
       completed,
       completed_at: completedAt,
     })
     .eq("id", sessionId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return actionError("study-planner", error, "study");
+  if (!updated) return { ok: false, error: "Study session not found." };
 
   revalidatePath("/study-planner");
   revalidatePath("/dashboard");
@@ -375,7 +407,9 @@ export async function rescheduleStudySession(
   newStartTime: string,
   newEndTime: string
 ): Promise<ActionResult> {
-  const user = await requireUserSession();
+  const access = await guardStudentAction("full");
+  if (!access.ok) return access;
+  const user = { id: access.ctx.userId };
   const supabase = await createServerSupabaseClient();
 
   const dateError = validateStudyDate(newDate);
@@ -384,7 +418,7 @@ export async function rescheduleStudySession(
   const timeError = validateStudyTimeRange(newStartTime, newEndTime);
   if (timeError) return { ok: false, error: timeError };
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("study_sessions")
     .update({
       study_date: newDate,
@@ -392,9 +426,12 @@ export async function rescheduleStudySession(
       end_time: newEndTime,
     })
     .eq("id", sessionId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return actionError("study-planner", error, "study");
+  if (!updated) return { ok: false, error: "Study session not found." };
 
   revalidatePath("/study-planner");
   revalidatePath("/dashboard");

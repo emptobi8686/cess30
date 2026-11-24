@@ -27,7 +27,7 @@ export default async function NotificationSettingsPage() {
           title="Choose your updates"
           description="Control in-app reminders, browser push, quiet hours, and registered devices."
           action={
-            <Button variant="outline" render={<Link href="/notifications" />}>
+            <Button variant="outline" nativeButton={false} render={<Link href="/notifications" />}>
               Open notification centre
             </Button>
           }

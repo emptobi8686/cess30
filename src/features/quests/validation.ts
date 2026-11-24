@@ -1,3 +1,7 @@
+import { LEVEL_CODES } from "@/features/academic/validation";
+import { z } from "zod";
+import { lagosDateTimeLocalToUtcIso } from "@/lib/dates";
+
 export type CreateQuestInput = {
   title: string;
   description: string;
@@ -58,3 +62,48 @@ export function validateSubmitQuestInput(input: SubmitQuestInput): string[] {
 
   return errors;
 }
+
+/** Form schema for creating and editing quests (admin). Values arrive as FormData strings. */
+export const questUpsertSchema = z.object({
+  title: z.string().trim().min(3, "Title must be between 3 and 160 characters.").max(160, "Title must be between 3 and 160 characters."),
+  description: z
+    .string()
+    .trim()
+    .min(10, "Description must be between 10 and 1000 characters.")
+    .max(1000, "Description must be between 10 and 1000 characters."),
+  xp_reward: z.coerce
+    .number({ message: "XP reward must be a whole number between 1 and 10000." })
+    .int("XP reward must be a whole number between 1 and 10000.")
+    .min(1, "XP reward must be a whole number between 1 and 10000.")
+    .max(10000, "XP reward must be a whole number between 1 and 10000."),
+  due_date: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value || !value.trim()) return null;
+      try {
+        return lagosDateTimeLocalToUtcIso(value);
+      } catch {
+        ctx.addIssue({ code: "custom", message: "Due date must be a valid date and time." });
+        return z.NEVER;
+      }
+    }),
+  is_active: z
+    .union([z.literal("on"), z.literal("true"), z.literal("")])
+    .optional()
+    .transform((value) => value === "on" || value === "true"),
+  /** Audience: a level (course representatives may only use their own) or "" for department-wide. */
+  level_code: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) return null;
+      if (!(LEVEL_CODES as readonly string[]).includes(value)) {
+        ctx.addIssue({ code: "custom", message: "Choose a valid level." });
+        return z.NEVER;
+      }
+      return value;
+    }),
+});
+
+export type QuestUpsertInput = z.output<typeof questUpsertSchema>;

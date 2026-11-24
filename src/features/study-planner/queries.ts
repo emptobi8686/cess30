@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getLagosDateString, getLagosNow, timeToMinutes } from "@/lib/dates";
+import { getLagosDateString, getLagosNow } from "@/lib/dates";
 import type {
   Course,
   StudySessionWithCourse,
@@ -195,6 +195,26 @@ export async function getOfficialLecturesForDateRange(
 }
 
 /**
+ * Courses for the planner: the student's active enrolments (E3), falling back to the
+ * whole non-archived catalogue when they have none yet.
+ */
+export async function getMyCourses(userId: string): Promise<Course[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data: enrolled } = await supabase
+    .from("course_enrollments")
+    .select("course_offerings ( courses ( * ) )")
+    .eq("student_id", userId)
+    .eq("status", "active");
+  const mine = new Map<string, Course>();
+  for (const row of (enrolled ?? []) as unknown as Array<{ course_offerings: { courses: Course | null } | null }>) {
+    const course = row.course_offerings?.courses;
+    if (course && !(course as Course & { archived_at?: string | null }).archived_at) mine.set(course.id, course);
+  }
+  if (mine.size > 0) return [...mine.values()].sort((a, b) => a.course_code.localeCompare(b.course_code));
+  return getCourses();
+}
+
+/**
  * Central course catalogue fetcher.
  */
 export async function getCourses(): Promise<Course[]> {
@@ -202,6 +222,7 @@ export async function getCourses(): Promise<Course[]> {
   const { data, error } = await supabase
     .from("courses")
     .select("*")
+    .is("archived_at", null)
     .order("course_code", { ascending: true });
 
   if (error) throw new Error(error.message);

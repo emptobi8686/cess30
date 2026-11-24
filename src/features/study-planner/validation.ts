@@ -1,3 +1,4 @@
+import { z } from "zod";
 /**
  * Pure validation, recurrence scheduling, and conflict detection rules for Study Planner.
  */
@@ -192,3 +193,31 @@ export function detectConflicts(
   return { studyConflicts, lectureConflicts };
 }
 
+
+/** Shared field rules for creating, editing and rescheduling study sessions (BP-049). */
+export const studySessionFields = z.object({
+  title: z.string().trim().min(1, "Study goal/title is required.").max(150, "Study title cannot exceed 150 characters."),
+  study_date: z.string().refine((value) => validateStudyDate(value) === null, "Choose a valid study date."),
+  start_time: z.string(),
+  end_time: z.string(),
+  notes: z.string().trim().max(1000, "Notes cannot exceed 1000 characters.").optional().nullable(),
+  location: z.string().trim().max(120, "Location cannot exceed 120 characters.").optional().nullable(),
+  course_id: z
+    .union([z.literal(""), z.literal("none"), z.string().uuid("Choose a valid course.")])
+    .optional()
+    .nullable(),
+});
+
+function checkTimes(value: { start_time: string; end_time: string }, ctx: z.RefinementCtx) {
+  const timeError = validateStudyTimeRange(value.start_time, value.end_time);
+  if (timeError) ctx.addIssue({ code: "custom", message: timeError, path: ["end_time"] });
+}
+
+export const studySessionSchema = studySessionFields.superRefine(checkTimes);
+
+/** Editing keeps each session's own date. */
+export const studySessionUpdateSchema = studySessionFields.omit({ study_date: true }).superRefine(checkTimes);
+
+export function firstSchemaIssue(error: { issues: Array<{ message: string }> }): string {
+  return error.issues[0]?.message ?? "Check the study session details.";
+}

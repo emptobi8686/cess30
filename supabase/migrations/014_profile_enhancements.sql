@@ -47,13 +47,15 @@ on conflict (id) do nothing;
 -- 4. Storage RLS policies for profile pictures
 -- ─────────────────────────────────────────────────────────────────────────
 
-create policy if not exists "profile_pictures_select_authenticated"
+drop policy if exists "profile_pictures_select_authenticated" on storage.objects;
+create policy "profile_pictures_select_authenticated"
 on storage.objects
 for select
 to authenticated
 using (bucket_id = 'profile-pictures');
 
-create policy if not exists "profile_pictures_insert_authenticated"
+drop policy if exists "profile_pictures_insert_authenticated" on storage.objects;
+create policy "profile_pictures_insert_authenticated"
 on storage.objects
 for insert
 to authenticated
@@ -62,7 +64,8 @@ with check (
   and (auth.uid())::text = split_part(name, '/', 1)
 );
 
-create policy if not exists "profile_pictures_update_authenticated"
+drop policy if exists "profile_pictures_update_authenticated" on storage.objects;
+create policy "profile_pictures_update_authenticated"
 on storage.objects
 for update
 to authenticated
@@ -75,7 +78,8 @@ with check (
   and (auth.uid())::text = split_part(name, '/', 1)
 );
 
-create policy if not exists "profile_pictures_delete_authenticated"
+drop policy if exists "profile_pictures_delete_authenticated" on storage.objects;
+create policy "profile_pictures_delete_authenticated"
 on storage.objects
 for delete
 to authenticated

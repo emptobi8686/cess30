@@ -1,7 +1,8 @@
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { requireAdmin } from "@/lib/auth/guards";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/lib/notifications/defaults";
 import type {
   AppNotification,
   NotificationPreferences,
@@ -19,7 +20,10 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
 
   if (error) throw new Error(error.message);
   if (!data) {
-    throw new Error("Notification preferences have not been initialized for this account.");
+    // No row yet (e.g. account created before the preferences trigger): show the
+    // database defaults; the first save upserts the row (BP-048).
+    const now = new Date().toISOString();
+    return { user_id: user.id, ...DEFAULT_NOTIFICATION_PREFERENCES, created_at: now, updated_at: now };
   }
   return data as NotificationPreferences;
 }
@@ -58,8 +62,7 @@ export async function getNotifications(
 }
 
 export async function getNotificationDeliveryStats() {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") throw new Error("Administrator access required.");
+  await requireAdmin();
 
   const admin = createAdminSupabaseClient();
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

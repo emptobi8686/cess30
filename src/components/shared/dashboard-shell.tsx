@@ -1,5 +1,8 @@
 "use client";
 
+import { FEATURES } from "@/config/features";
+import { cohortLabel, type ShellAcademic } from "./cohort-label";
+
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -7,18 +10,22 @@ import {
   ChevronDown,
   LayoutGrid,
   LogOut,
+  Medal,
   Megaphone,
   Menu,
   NotebookPen,
   Settings,
   Trophy,
   UserRound,
+  Library as LibraryIcon,
+  PlayCircle,
 } from "lucide-react";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -36,11 +43,14 @@ const navItems = [
   { label: "Study Planner", href: "/study-planner", icon: NotebookPen },
   { label: "Announcements", href: "/announcements", icon: Megaphone },
   { label: "Quests", href: "/quests", icon: Trophy },
-  { label: "Leaderboard", href: "/leaderboard", icon: LayoutGrid },
+  { label: "Leaderboard", href: "/leaderboard", icon: Medal },
+  { label: "Library", href: "/library", icon: LibraryIcon },
+  ...(FEATURES.tutorials ? [{ label: "Tutorials", href: "/tutorials", icon: PlayCircle }] : []),
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
-function SidebarNav({ currentLabel }: { currentLabel: string }) {
+function SidebarNav({ currentLabel, academic }: { currentLabel: string; academic?: ShellAcademic }) {
+  const cohort = cohortLabel(academic);
   return (
     <aside className="hidden w-72 shrink-0 border-r border-border/80 bg-card/80 p-5 lg:block">
       <div className="flex items-center gap-3 border-b border-border/80 pb-5">
@@ -75,8 +85,8 @@ function SidebarNav({ currentLabel }: { currentLabel: string }) {
       </nav>
 
       <div className="mt-8 rounded-2xl border border-dashed border-border bg-muted/30 p-4">
-        <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Pilot cohort</p>
-        <p className="mt-3 text-lg font-semibold text-foreground">200 Level</p>
+        <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Your cohort</p>
+        {cohort ? <p className="mt-3 text-lg font-semibold text-foreground">{cohort}</p> : null}
         <p className="mt-1 text-sm text-muted-foreground">Civil Engineering</p>
       </div>
     </aside>
@@ -151,8 +161,9 @@ function ProfileMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button type="button" variant="ghost" className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted">
+      <DropdownMenuTrigger
+        render={<Button type="button" variant="ghost" className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted" />}
+      >
           {avatarUrl ? (
             <Image
               src={avatarUrl}
@@ -172,19 +183,18 @@ function ProfileMenu({
             <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Pilot</p>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
-        <DropdownMenuLabel>Account</DropdownMenuLabel>
-        <DropdownMenuItem className="gap-2 p-0">
-          <Link href="/settings/profile" className="flex w-full items-center gap-2 px-1.5 py-1">
-            <UserRound className="h-4 w-4" />
-            Profile &amp; settings
-          </Link>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Account</DropdownMenuLabel>
+        </DropdownMenuGroup>
+        <DropdownMenuItem className="gap-2" render={<Link href="/settings/profile" />}>
+          <UserRound className="h-4 w-4" aria-hidden />
+          Profile &amp; settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={handleSignOut}
+          onClick={handleSignOut}
           disabled={isPending}
           variant="destructive"
           className="gap-2"
@@ -202,16 +212,19 @@ export function DashboardShell({
   currentLabel,
   displayName,
   avatarUrl,
+  academic,
 }: {
   children: React.ReactNode;
   currentLabel: string;
   displayName?: string;
   avatarUrl?: string | null;
+  /** Level and session for the sidebar cohort card; omitted pages show the department only. */
+  academic?: ShellAcademic;
 }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex max-w-[1600px]">
-        <SidebarNav currentLabel={currentLabel} />
+        <SidebarNav currentLabel={currentLabel} academic={academic} />
 
         <main className="flex min-h-screen flex-1 flex-col">
           <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-sm">

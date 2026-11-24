@@ -4,9 +4,9 @@ import {
   Megaphone,
   BookOpen,
   CheckCircle2,
-  Clock,
   ArrowRight,
   TrendingUp,
+  MapPin,
 } from "lucide-react";
 import { DashboardShell } from "@/components/shared/dashboard-shell";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -22,7 +22,6 @@ import {
   formatTime,
   formatTimestamp,
   getWeekDates,
-  getLagosNow,
 } from "@/lib/dates";
 import {
   getNextUpcomingSession,
@@ -36,19 +35,22 @@ import {
   getRecentlyCompletedStudySessions,
 } from "@/features/study-planner/queries";
 import type { VerificationStatus } from "@/types";
+import { getAcademicContext } from "@/features/academic/context";
+import { academicHeadline } from "@/features/academic/context-core";
+import { getActiveQuests, getUserXpSummary } from "@/features/quests/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const user = await requireUserSession();
   const supabase = await createServerSupabaseClient();
-  const { date: todayDate } = getLagosNow();
+
   const weekInfo = getWeekDates();
 
   // Fetch student profile including matriculation and verification status
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, nickname, matric_number, avatar_url, verification_status")
+    .select("full_name, nickname, matric_number, avatar_url, verification_status, verification_rejection_reason")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -75,23 +77,66 @@ export default async function DashboardPage() {
     getWeeklyStudySummary(user.id, weekInfo.weekStart, weekInfo.weekEnd),
     getRecentlyCompletedStudySessions(user.id, 3),
   ]);
+  const [academic, myQuests, myXp] = await Promise.all([
+    getAcademicContext(),
+    verificationStatus === "verified" ? getActiveQuests().then((q) => q.slice(0, 3)) : Promise.resolve([]),
+    verificationStatus === "verified" ? getUserXpSummary(user.id).catch(() => null) : Promise.resolve(null),
+  ]);
+  const headline = academicHeadline(academic);
 
   const firstName = displayName?.split(" ")[0];
 
   return (
-    <DashboardShell currentLabel="Overview" displayName={displayName} avatarUrl={avatarUrl}>
+    <DashboardShell currentLabel="Overview" displayName={displayName} avatarUrl={avatarUrl} academic={academic}>
       <div className="space-y-6">
         <PageHeader
           eyebrow="Student overview"
           title={firstName ? `Welcome back, ${firstName}.` : "Your workspace is ready."}
-          description="Your academic dashboard for the 200-level Civil Engineering pilot."
+          description={headline ?? "Your Civil Engineering academic dashboard."}
         />
 
         {/* Verification & Profile Status Banner */}
         <VerificationBanner
           matricNumber={matricNumber}
           verificationStatus={verificationStatus}
+          rejectionReason={profile?.verification_rejection_reason ?? null}
+          placement={{ sessionLabel: academic.sessionLabel, status: academic.placementStatus }}
         />
+
+        {verificationStatus === "verified" ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">My quests</CardTitle>
+                <CardDescription>Open quests for your level and courses.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {myQuests.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No open quests right now.</p>
+                ) : (
+                  <ul className="divide-y divide-border/60 text-sm">
+                    {myQuests.map((quest) => (
+                      <li key={quest.id} className="flex items-center justify-between gap-3 py-2">
+                        <Link href="/quests" className="font-medium hover:underline">{quest.title}</Link>
+                        <Badge variant="secondary">{quest.xp_reward} XP</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">My XP</CardTitle>
+                <CardDescription>From approved quests.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-semibold" data-testid="my-xp">{myXp?.total_xp ?? 0}</p>
+                <p className="text-xs text-muted-foreground">{myXp?.quests_completed ?? 0} quests completed</p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
 
         {/* ───────────────────────────────────────────────────────────── */}
         {/* Study Planner Integration: Weekly Progress Summary */}
@@ -284,7 +329,9 @@ export default async function DashboardPage() {
                         </p>
                         {study.location ? (
                           <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                            📍 {study.location}
+                            <MapPin className="mr-1 inline h-3 w-3" aria-hidden />
+                            <span className="sr-only">Location: </span>
+                            {study.location}
                           </p>
                         ) : null}
                       </div>

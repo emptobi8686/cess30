@@ -77,9 +77,14 @@ function DropdownMenuItem({
   inset,
   variant = "default",
   ...props
-}: MenuPrimitive.Item.Props & {
+}: Omit<MenuPrimitive.Item.Props, "onSelect"> & {
   inset?: boolean
   variant?: "default" | "destructive"
+  /**
+   * Base UI menu items have no `onSelect` (that is Radix). In React it would bind
+   * the DOM text-selection event and never fire on click. Use `onClick`.
+   */
+  onSelect?: never
 }) {
   return (
     <MenuPrimitive.Item

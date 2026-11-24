@@ -81,8 +81,6 @@ export function RegisterForm() {
       const { error: signUpError } = await signUpWithEmail(form.email, form.password, {
         full_name: form.fullName.trim(),
         matric_number: form.matricNumber.trim(),
-        department: "Civil Engineering",
-        level: "200",
       });
 
       if (signUpError) {
@@ -94,7 +92,7 @@ export function RegisterForm() {
       setSuccess("Registration submitted. Please check your email to confirm your account.");
       setIsEmailSubmitting(false);
       setForm({ fullName: "", matricNumber: "", email: "", password: "" });
-      router.push("/login?message=" + encodeURIComponent("Registration submitted. Please check your email to confirm your account."));
+      router.push("/login?message=registration_submitted");
     } catch {
       setError("Unable to complete registration. Please try again.");
       setIsEmailSubmitting(false);
@@ -115,7 +113,7 @@ export function RegisterForm() {
           <div className="space-y-1">
             <CardTitle className="text-2xl font-bold tracking-tight">Create student account</CardTitle>
             <CardDescription>
-              Registration is designated for University of Lagos 200-level Civil Engineering students. Student accounts require administrator verification.
+              Registration is for University of Lagos Civil Engineering students. You choose your level after verification. Student accounts require administrator verification.
             </CardDescription>
           </div>
         </CardHeader>
@@ -130,10 +128,9 @@ export function RegisterForm() {
           <div className="space-y-3">
             <Button
               type="button"
-              variant="outline"
               disabled={isSubmitting}
               onClick={handleGoogleSignUp}
-              className="w-full h-11 border-border font-medium hover:bg-muted/70 gap-2"
+              className="w-full h-11 font-medium gap-2"
             >
               {isGoogleSubmitting ? (
                 <>
@@ -147,6 +144,9 @@ export function RegisterForm() {
                 </>
               )}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Students: use the Google account you use for school. First time? This creates your account; you add your matric number next.
+            </p>
           </div>
 
           {/* Visual Divider */}

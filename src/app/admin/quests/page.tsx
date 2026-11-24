@@ -1,17 +1,15 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/shared/stat-card";
-import {
-  createQuestAction,
-  updateQuestAction,
-  reviewQuestSubmissionAction,
-} from "@/features/quests/actions";
+import { formatTimestamp } from "@/lib/dates";
+import { toSafeExternalHref } from "@/lib/safe-links";
+import { QuestCreateForm } from "./_components/quest-create-form";
+import { QuestEditForm } from "./_components/quest-edit-form";
+import { SubmissionReview } from "./_components/submission-review";
 import {
   getAllQuestsAdmin,
   getAllQuestSubmissionsAdmin,
@@ -19,27 +17,6 @@ import {
   getActiveQuestsCountAdmin,
 } from "@/features/quests/queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-async function handleCreateQuest(formData: FormData): Promise<void> {
-  const result = await createQuestAction(formData);
-  if (!result.ok) {
-    console.error(result.error);
-  }
-}
-
-async function handleUpdateQuest(formData: FormData): Promise<void> {
-  const result = await updateQuestAction(formData);
-  if (!result.ok) {
-    console.error(result.error);
-  }
-}
-
-async function handleReviewQuestSubmission(formData: FormData): Promise<void> {
-  const result = await reviewQuestSubmissionAction(formData);
-  if (!result.ok) {
-    console.error(result.error);
-  }
-}
 
 function toString(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -107,12 +84,10 @@ export default async function AdminQuestsPage({
             </p>
             <h2 className="mt-1 text-2xl font-semibold">Quests &amp; submissions</h2>
           </div>
-          <Link href="/admin">
-            <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" nativeButton={false} render={<Link href="/admin" />}>
               <ArrowLeft className="h-4 w-4" />
               Back to overview
             </Button>
-          </Link>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -147,32 +122,7 @@ export default async function AdminQuestsPage({
             <CardTitle className="text-base">Create a new quest</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form action={handleCreateQuest} className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Title</label>
-                <Input name="title" placeholder="e.g. Submit lecture notes" required />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground">Description</label>
-                <Textarea name="description" placeholder="Describe what the student must do..." required />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">XP reward</label>
-                <Input type="number" name="xp_reward" min="1" max="10000" defaultValue="50" required />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Due date (optional)</label>
-                <Input type="datetime-local" name="due_date" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  <input type="checkbox" name="is_active" defaultChecked /> Active
-                </label>
-              </div>
-              <div className="sm:col-span-2">
-                <Button type="submit">Create quest</Button>
-              </div>
-            </form>
+            <QuestCreateForm />
           </CardContent>
         </Card>
 
@@ -186,51 +136,28 @@ export default async function AdminQuestsPage({
             ) : (
               <div className="space-y-3">
                 {quests.map((quest) => (
-                  <div
+                  <details
                     key={quest.id}
-                    className="flex items-center justify-between gap-3 p-3 border-b border-border/60 last:border-0"
+                    className="rounded-lg border border-border/60 p-3 open:bg-muted/20"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-foreground">{quest.title}</div>
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {quest.description}
-                      </p>
-                      <div className="flex items-center gap-3 text-xs mt-1">
-                        <span className="text-muted-foreground">+{quest.xp_reward} XP</span>
-                        <span className="text-muted-foreground">
-                          {quest.due_date ? new Date(quest.due_date).toLocaleDateString() : "No deadline"}
-                        </span>
-                        {quest.is_active ? (
-                          <Badge variant="secondary" className="text-[10px]">Active</Badge>
-                        ) : (
-                          <Badge variant="destructive" className="text-[10px]">Inactive</Badge>
-                        )}
-                      </div>
+                    <summary className="flex cursor-pointer flex-wrap items-center gap-3">
+                      <span className="font-medium text-foreground">{quest.title}</span>
+                      <span className="text-xs text-muted-foreground">+{quest.xp_reward} XP</span>
+                      <span className="text-xs text-muted-foreground">
+                        {quest.due_date
+                          ? `Due ${formatTimestamp(quest.due_date, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`
+                          : "No deadline"}
+                      </span>
+                      {quest.is_active ? (
+                        <Badge variant="secondary" className="text-[10px]">Active</Badge>
+                      ) : (
+                        <Badge variant="destructive" className="text-[10px]">Inactive</Badge>
+                      )}
+                    </summary>
+                    <div className="mt-3">
+                      <QuestEditForm quest={quest} />
                     </div>
-                    <form action={handleUpdateQuest} className="space-y-2">
-                      <input type="hidden" name="questId" value={quest.id} />
-                      <Input name="title" defaultValue={quest.title} className="w-40 text-xs" />
-                      <Input
-                        type="number"
-                        name="xp_reward"
-                        defaultValue={String(quest.xp_reward)}
-                        min="1"
-                        max="10000"
-                        className="w-24 text-xs"
-                      />
-                      <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <input
-                          type="checkbox"
-                          name="is_active"
-                          defaultChecked={quest.is_active ?? false}
-                        />
-                        Active
-                      </label>
-                      <Button type="submit" variant="outline" size="sm">
-                        Save
-                      </Button>
-                    </form>
-                  </div>
+                  </details>
                 ))}
               </div>
             )}
@@ -242,26 +169,18 @@ export default async function AdminQuestsPage({
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle className="text-base">Submission review</CardTitle>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Link href="/admin/quests">
-                  <Button type="button" variant={activeStatus === "all" ? "default" : "outline"} size="sm">
+                <Button variant={activeStatus === "all" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests" />}>
                     All
                   </Button>
-                </Link>
-                <Link href="/admin/quests?status=pending">
-                  <Button type="button" variant={activeStatus === "pending" ? "default" : "outline"} size="sm">
+                <Button variant={activeStatus === "pending" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=pending" />}>
                     Pending
                   </Button>
-                </Link>
-                <Link href="/admin/quests?status=approved">
-                  <Button type="button" variant={activeStatus === "approved" ? "default" : "outline"} size="sm">
+                <Button variant={activeStatus === "approved" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=approved" />}>
                     Approved
                   </Button>
-                </Link>
-                <Link href="/admin/quests?status=rejected">
-                  <Button type="button" variant={activeStatus === "rejected" ? "default" : "outline"} size="sm">
+                <Button variant={activeStatus === "rejected" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=rejected" />}>
                     Rejected
                   </Button>
-                </Link>
               </div>
             </div>
           </CardHeader>
@@ -277,6 +196,7 @@ export default async function AdminQuestsPage({
                     <tr className="border-b border-border text-muted-foreground">
                       <th className="px-2 py-3 font-medium">Student</th>
                       <th className="px-2 py-3 font-medium">Quest</th>
+                      <th className="px-2 py-3 font-medium">Evidence</th>
                       <th className="px-2 py-3 font-medium">Status</th>
                       <th className="px-2 py-3 font-medium">Submitted</th>
                       <th className="px-2 py-3 font-medium">Actions</th>
@@ -296,47 +216,37 @@ export default async function AdminQuestsPage({
                           <td className="px-2 py-3">
                             <div className="font-medium">{quest?.title ?? "Unknown quest"}</div>
                           </td>
+                          <td className="px-2 py-3 max-w-xs">
+                            {(() => {
+                              const href = toSafeExternalHref(submission.evidence_url);
+                              return href ? (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 break-all text-primary underline-offset-2 hover:underline"
+                                >
+                                  {new URL(href).hostname}
+                                  <ExternalLink className="h-3 w-3" aria-hidden />
+                                  <span className="sr-only">(opens in a new tab)</span>
+                                </a>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Unsafe link hidden</span>
+                              );
+                            })()}
+                            {submission.notes ? (
+                              <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{submission.notes}</p>
+                            ) : null}
+                          </td>
                           <td className="px-2 py-3">
                             {statusBadge(submission.status)}
                           </td>
                           <td className="px-2 py-3 text-muted-foreground">
-                            {new Date(submission.created_at).toLocaleDateString()}
+                            {formatTimestamp(submission.created_at)}
                           </td>
                           <td className="px-2 py-3">
                             {submission.status === "pending" ? (
-                              <div className="flex flex-col gap-2">
-                                <form action={handleReviewQuestSubmission} className="space-y-2">
-                                  <input type="hidden" name="submissionId" value={submission.id} />
-                                  <input type="hidden" name="new_status" value="approved" />
-                                  <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <input type="checkbox" name="confirmed" required />
-                                    Confirm approval
-                                  </label>
-                                  <Button type="submit" variant="default" size="sm" className="gap-2">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Approve
-                                  </Button>
-                                </form>
-                                <form action={handleReviewQuestSubmission} className="space-y-2">
-                                  <input type="hidden" name="submissionId" value={submission.id} />
-                                  <input type="hidden" name="new_status" value="rejected" />
-                                  <Textarea
-                                    name="rejection_reason"
-                                    rows={1}
-                                    placeholder="Reason (12+ chars)"
-                                    required
-                                    className="h-10 text-xs"
-                                  />
-                                  <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <input type="checkbox" name="confirmed" required />
-                                    Confirm rejection
-                                  </label>
-                                  <Button type="submit" variant="destructive" size="sm" className="gap-2">
-                                    <XCircle className="h-4 w-4" />
-                                    Reject
-                                  </Button>
-                                </form>
-                              </div>
+                              <SubmissionReview submissionId={submission.id} />
                             ) : (
                               <div className="text-xs text-muted-foreground">
                                 {submission.status === "approved" ? "Approved" : "Rejected"}

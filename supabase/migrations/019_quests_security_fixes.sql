@@ -282,7 +282,8 @@ on conflict (id) do nothing;
 -- Students can upload their own evidence and read their own files.
 -- Admins can read all files.
 
-create policy if not exists "quest_evidence_select_own"
+drop policy if exists "quest_evidence_select_own" on storage.objects;
+create policy "quest_evidence_select_own"
 on storage.objects
 for select
 to authenticated
@@ -291,7 +292,8 @@ using (
   and (owner = auth.uid() or public.is_admin())
 );
 
-create policy if not exists "quest_evidence_insert_own"
+drop policy if exists "quest_evidence_insert_own" on storage.objects;
+create policy "quest_evidence_insert_own"
 on storage.objects
 for insert
 to authenticated
@@ -300,7 +302,8 @@ with check (
   and owner = auth.uid()
 );
 
-create policy if not exists "quest_evidence_update_own"
+drop policy if exists "quest_evidence_update_own" on storage.objects;
+create policy "quest_evidence_update_own"
 on storage.objects
 for update
 to authenticated
@@ -313,7 +316,8 @@ with check (
   and owner = auth.uid()
 );
 
-create policy if not exists "quest_evidence_delete_own"
+drop policy if exists "quest_evidence_delete_own" on storage.objects;
+create policy "quest_evidence_delete_own"
 on storage.objects
 for delete
 to authenticated

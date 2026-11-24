@@ -2,9 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { getProfile } from "@/app/actions/profile";
 import { ProfileSettingsClient } from "./_components/profile-settings-client";
+import { getAcademicContext } from "@/features/academic/context";
 
 export default async function ProfileSettingsPage() {
-  const profile = await getProfile();
+  const [profile, academic] = await Promise.all([getProfile(), getAcademicContext()]);
 
   if (!profile) {
     return (
@@ -26,6 +27,7 @@ export default async function ProfileSettingsPage() {
         }}
         displayName=""
         initials=""
+        academic={academic}
       />
     );
   }
@@ -43,6 +45,7 @@ export default async function ProfileSettingsPage() {
       profile={profile}
       displayName={displayName}
       initials={initials}
+      academic={academic}
     />
   );
 }

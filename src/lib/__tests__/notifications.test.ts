@@ -11,7 +11,6 @@ import {
   getSafeActionUrl,
   isSafePushEndpoint,
 } from "@/lib/notifications/validation";
-import { getAnnouncementRecipients } from "@/lib/notifications/targeting";
 
 describe("notification time handling", () => {
   test("converts Africa/Lagos wall time to UTC across midnight", () => {
@@ -89,29 +88,4 @@ describe("notification endpoint and action URL validation", () => {
   });
 });
 
-describe("announcement recipient targeting", () => {
-  const profiles = [
-    { id: "civil-200", department: "Civil Engineering", level: "200" },
-    { id: "civil-300", department: "Civil Engineering", level: "300" },
-    { id: "other-200", department: "Mechanical Engineering", level: "200" },
-  ];
-
-  test("matches course announcements to course department and level", () => {
-    const recipients = getAnnouncementRecipients(profiles, "course", {
-      department: "Civil Engineering",
-      level: "200",
-    });
-    assert.deepEqual(recipients.map((profile) => profile.id), ["civil-200"]);
-  });
-
-  test("supports department and level announcement scopes", () => {
-    assert.deepEqual(
-      getAnnouncementRecipients(profiles, "department", null).map((profile) => profile.id),
-      ["civil-200", "civil-300"]
-    );
-    assert.deepEqual(
-      getAnnouncementRecipients(profiles, "level", null).map((profile) => profile.id),
-      ["civil-200", "other-200"]
-    );
-  });
-});
+// Announcement and lecture targeting moved to SQL (E4/E5): supabase/tests/database/340_notification_targeting.test.sql

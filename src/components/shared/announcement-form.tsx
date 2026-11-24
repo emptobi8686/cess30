@@ -1,5 +1,7 @@
 "use client";
 
+import { AudiencePicker } from "@/components/shared/audience-picker";
+import { toAudienceInputs } from "@/features/audiences/schema";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -7,13 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   createAnnouncement,
   updateAnnouncement,
@@ -26,22 +21,17 @@ type Props = {
   onSuccess?: () => void;
 };
 
-export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
+export function AnnouncementForm({ announcement, onSuccess }: Props) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [scope, setScope] = useState<string>(announcement?.scope ?? "all");
-  const [courseId, setCourseId] = useState<string>(announcement?.course_id ?? "");
   const [notifyStudents, setNotifyStudents] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setError(null);
     setSuccess(null);
-    formData.set("scope", scope);
-    formData.set("course_id", scope === "course" ? courseId : "");
-
     startTransition(async () => {
       const result = announcement
         ? await updateAnnouncement(announcement.id, formData)
@@ -59,8 +49,6 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
   }
 
   async function handlePublish(formData: FormData) {
-    formData.set("scope", scope);
-    formData.set("course_id", scope === "course" ? courseId : "");
     formData.set("publish", "true");
     setError(null);
     setSuccess(null);
@@ -85,6 +73,7 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
         <Input
           id="title"
           name="title"
+              maxLength={160}
           required
           placeholder="e.g. Mid-semester test date"
           defaultValue={announcement?.title ?? ""}
@@ -97,6 +86,7 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
         <Textarea
           id="content"
           name="content"
+              maxLength={5000}
           required
           placeholder="Write the announcement message…"
           className="min-h-[120px]"
@@ -104,43 +94,8 @@ export function AnnouncementForm({ courses, announcement, onSuccess }: Props) {
         />
       </div>
 
-      {/* Scope */}
-      <div className="space-y-1.5">
-        <Label htmlFor="scope">Scope</Label>
-        <Select value={scope} onValueChange={(v: string | null) => setScope(v ?? "all")}>
-          <SelectTrigger className="w-full" id="scope">
-            <SelectValue placeholder="Select scope…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All students</SelectItem>
-            <SelectItem value="department">Department</SelectItem>
-            <SelectItem value="level">Level (200)</SelectItem>
-            <SelectItem value="course">Course-specific</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Course — only shown when scope = course */}
-      {scope === "course" && (
-        <div className="space-y-1.5">
-          <Label htmlFor="course_id">Course</Label>
-          <Select value={courseId} onValueChange={(v: string | null) => setCourseId(v ?? "")}>
-            <SelectTrigger className="w-full" id="course_id">
-              <SelectValue placeholder="Select a course…" />
-            </SelectTrigger>
-            <SelectContent>
-              {courses.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.course_code} — {c.course_title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Course notifications go to students whose profile department and level match the course.
-          </p>
-        </div>
-      )}
+      {/* Audience (E4): who sees this announcement */}
+      <AudiencePicker name="audiences" id="announcement-audience" defaultValue={toAudienceInputs(announcement?.announcement_audiences)} />
 
       {!announcement && (
         <fieldset className="space-y-2 rounded-lg border border-border/70 p-3">

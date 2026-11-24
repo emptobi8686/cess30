@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition, useActionState } from "react";
-import Image from "next/image";
-import { Upload, Trash2, Image as ImageIcon, Clock, ShieldCheck } from "lucide-react";
+import { useActionState } from "react";
+import { Clock, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/shared/dashboard-shell";
+import { AvatarControls } from "./avatar-controls";
+import { PlacementSection } from "./placement-section";
+import type { AcademicContext } from "@/features/academic/context-core";
 import { PageHeader } from "@/components/shared/page-header";
 import { VerificationBanner } from "@/components/shared/verification-banner";
 import {
@@ -19,8 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   updateProfile,
-  uploadProfilePicture,
-  deleteProfilePicture,
   submitMatricNumber,
   type CompleteProfileState,
 } from "@/app/actions/profile";
@@ -30,7 +30,9 @@ export function ProfileSettingsClient({
   profile,
   displayName,
   initials,
+  academic,
 }: {
+  academic: AcademicContext;
   profile: {
     id: string;
     full_name: string;
@@ -49,8 +51,6 @@ export function ProfileSettingsClient({
   displayName: string;
   initials: string;
 }) {
-  const [isUploading, startUploadTransition] = useTransition();
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [matricState, matricFormAction, isMatricPending] = useActionState<
     CompleteProfileState,
@@ -60,23 +60,15 @@ export function ProfileSettingsClient({
     CompleteProfileState,
     FormData
   >(updateProfile, null);
-  const [uploadState] = useActionState<CompleteProfileState, FormData>(
-    uploadProfilePicture,
-    null
-  );
 
   const avatarUrl = profile.avatar_url;
-  const hasAvatar = Boolean(avatarUrl);
-
-  function handleDeletePicture() {
-    void deleteProfilePicture();
-  }
 
   return (
     <DashboardShell
       currentLabel="Profile"
       displayName={displayName}
       avatarUrl={avatarUrl}
+      academic={academic}
     >
       <div className="space-y-6">
         <PageHeader
@@ -107,111 +99,11 @@ export function ProfileSettingsClient({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col items-center gap-4">
-                <div
-                  className={cn(
-                    "relative flex h-32 w-32 items-center justify-center rounded-full border border-border bg-muted",
-                    hasAvatar ? "overflow-hidden" : ""
-                  )}
-                >
-                  {hasAvatar && avatarUrl ? (
-                    <Image
-                      src={avatarUrl}
-                      alt="Profile picture"
-                      className="h-full w-full object-cover"
-                      width={128}
-                      height={128}
-                      priority
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center rounded-full bg-muted/50">
-                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                      <span className="mt-1 text-xs font-medium text-muted-foreground">
-                        {initials}
-                      </span>
-                    </div>
-                  )}
-                  <Button
-                    type="button"
-                    size="icon-sm"
-                    variant="outline"
-                    className="absolute bottom-0 right-0 m-1.5 bg-background"
-                    disabled={isUploading}
-                    onClick={() => {
-                      const input = document.getElementById(
-                        "profilePictureInput"
-                      ) as HTMLInputElement | null;
-                      void input?.click();
-                    }}
-                  >
-                    <Upload className="h-3 w-3" />
-                  </Button>
-                  <input
-                    id="profilePictureInput"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const fd = new FormData();
-                      fd.append("file", file);
-                      startUploadTransition(async () => {
-                        setUploadProgress(0);
-                        const interval = setInterval(() => {
-                          setUploadProgress((p) =>
-                            p < 90 ? p + 10 : p
-                          );
-                        }, 100);
-                        await uploadProfilePicture(null, fd);
-                        clearInterval(interval);
-                        setUploadProgress(100);
-                        setTimeout(() => setUploadProgress(0), 800);
-                      });
-                    }}
-                  />
-                </div>
-
-                {hasAvatar && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={isUploading}
-                    onClick={handleDeletePicture}
-                    className="flex items-center gap-1.5"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Remove picture
-                  </Button>
-                )}
-
-                {isUploading && uploadProgress > 0 && (
-                  <div className="w-full">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Uploading…
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {uploadProgress}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
-                      <div
-                        className="h-full bg-primary"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {uploadState?.error && (
-                  <p className="text-xs text-destructive">{uploadState.error}</p>
-                )}
-                {uploadState?.success && (
-                  <p className="text-xs text-primary">{uploadState.success}</p>
-                )}
-              </div>
+              <AvatarControls
+                userId={profile.id}
+                avatarUrl={profile.avatar_url}
+                initials={initials}
+              />
             </CardContent>
           </Card>
 
@@ -318,6 +210,8 @@ export function ProfileSettingsClient({
               </CardContent>
             </Card>
 
+            <PlacementSection academic={academic} />
+
             <Card>
               <CardHeader>
                 <CardTitle>Nickname</CardTitle>
@@ -354,9 +248,7 @@ export function ProfileSettingsClient({
         </div>
 
         <div className="mt-4">
-          <Link href="/settings">
-            <Button variant="outline">← Back to settings</Button>
-          </Link>
+          <Button variant="outline" nativeButton={false} render={<Link href="/settings" />}>← Back to settings</Button>
         </div>
       </div>
     </DashboardShell>

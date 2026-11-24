@@ -2,160 +2,184 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/guards";
 import { validateVerificationRejectionReason } from "@/lib/verification";
-import type { ActionResult } from "@/types";
+import {
+  errorState,
+  rpcErrorToMessage,
+  successState,
+  type ActionState,
+} from "@/features/verification/action-state";
+import { ACCESS_DENIED_MESSAGE, AccessDeniedError } from "@/lib/auth/guards";
 
-async function requireAdminSession() {
-  const user = await requireUserSession();
-  const role = await getCurrentUserRole();
-
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
-
-  return user;
-}
-
+/**
+ * Notifies the student about a committed decision. Uses the service-role client:
+ * authenticated users have no INSERT grant on notifications (BP-023).
+ * Returns false when the notice could not be stored.
+ */
 async function createVerificationNotification(
   profileId: string,
   status: "verified" | "rejected",
-  reason?: string | null
-) {
-  const supabase = await createServerSupabaseClient();
-  const dedupeKey = `verification:${profileId}:${status}`;
+  reason: string | null
+): Promise<boolean> {
+  try {
+    const admin = createAdminSupabaseClient();
+    const { data: latest } = await admin
+      .from("profile_verification_history")
+      .select("id")
+      .eq("profile_id", profileId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  const { data: existing } = await supabase
-    .from("notifications")
-    .select("id")
-    .eq("dedupe_key", dedupeKey)
-    .maybeSingle();
+    const title = status === "verified" ? "Matriculation verified" : "Matriculation update required";
+    const message =
+      status === "verified"
+        ? "Your matriculation number has been verified and your student profile is active."
+        : `Your matriculation number was not approved. ${reason ?? "Please contact your course representative."}`.slice(0, 500);
 
-  if (existing) {
-    return;
+    const { error } = await admin.from("notifications").upsert(
+      {
+        user_id: profileId,
+        title,
+        message,
+        notification_type: "system",
+        source_type: "system",
+        source_id: null,
+        action_url: "/settings/profile",
+        dedupe_key: `verification:${profileId}:${status}:${latest?.id ?? new Date().toISOString()}`,
+        is_read: false,
+        push_requested: false,
+        push_status: "not_requested",
+      },
+      { onConflict: "dedupe_key", ignoreDuplicates: true }
+    );
+
+    if (error) {
+      console.error("Could not create verification notification.", { code: error.code });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Could not create verification notification.", {
+      errorName: error instanceof Error ? error.name : "unknown",
+    });
+    return false;
   }
+}
 
-  const title =
-    status === "verified" ? "Matriculation verified" : "Matriculation update required";
-  const message =
-    status === "verified"
-      ? "Your matriculation number has been verified and your student profile is active."
-      : `Your matriculation number was not approved. ${reason ?? "Please contact the course representative."}`;
+function revalidateVerificationViews() {
+  revalidatePath("/admin");
+  revalidatePath("/admin/verifications");
+  revalidatePath("/dashboard");
+  revalidatePath("/settings/profile");
+}
 
-  const { error } = await supabase.from("notifications").insert({
-    user_id: profileId,
-    title,
-    message,
-    notification_type: "system",
-    source_type: "system",
-    source_id: null,
-    action_url: "/settings/profile",
-    dedupe_key: dedupeKey,
-    is_read: false,
-    push_requested: false,
-    push_status: "not_requested",
-  });
+function readProfileId(formData: FormData): string | null {
+  const value = String(formData.get("profileId") ?? "").trim();
+  return /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+}
 
-  if (error) {
-    console.error("Could not create verification notification.", error);
+function isConfirmed(formData: FormData): boolean {
+  return String(formData.get("confirmed") ?? "").toLowerCase() === "on";
+}
+
+function failure(error: unknown): ActionState {
+  if (error instanceof AccessDeniedError) return errorState(ACCESS_DENIED_MESSAGE);
+  if (error instanceof Error && error.message.includes("Rejection reason")) {
+    return errorState(error.message);
   }
+  return errorState(rpcErrorToMessage({}));
 }
 
 async function applyVerificationDecision(
   profileId: string,
   nextStatus: "verified" | "rejected",
-  reason?: string | null
-): Promise<ActionResult<{ status: "verified" | "rejected" }>> {
+  reason: string | null
+): Promise<ActionState> {
   try {
-    const adminUser = await requireAdminSession();
+    await requireAdmin();
 
     const normalizedReason =
-      nextStatus === "rejected"
-        ? validateVerificationRejectionReason(reason)
-        : null;
+      nextStatus === "rejected" ? validateVerificationRejectionReason(reason) : null;
 
     const supabase = await createServerSupabaseClient();
 
-    // Call the atomic database RPC. The RPC independently verifies admin
-    // authorization, rejects self-review, locks the profile row, validates
-    // status/decision, and updates profile + history in one transaction.
-    const { data: rpcResult, error: rpcError } = await supabase.rpc(
-      "verify_profile_decision",
-      {
-        p_profile_id: profileId,
-        p_new_status: nextStatus,
-        p_rejection_reason: normalizedReason ?? null,
-      }
-    );
+    // The RPC independently verifies admin authorization, rejects self-review,
+    // locks the profile row, validates the decision, and writes profile + history
+    // in one transaction.
+    const { error: rpcError } = await supabase.rpc("verify_profile_decision", {
+      p_profile_id: profileId,
+      p_new_status: nextStatus,
+      p_rejection_reason: normalizedReason,
+    });
 
-    if (rpcError) {
-      return { ok: false, error: rpcError.message };
-    }
+    if (rpcError) return errorState(rpcErrorToMessage(rpcError));
 
-    // Notification is created only after the review commits. If notification
-    // creation fails, log it but do not pretend the review itself failed.
-    void createVerificationNotification(profileId, nextStatus, normalizedReason);
+    const notified = await createVerificationNotification(profileId, nextStatus, normalizedReason);
+    revalidateVerificationViews();
 
-    revalidatePath("/admin");
-    revalidatePath("/admin/verifications");
-    revalidatePath("/dashboard");
-    revalidatePath("/settings/profile");
-
-    void adminUser;
-    void rpcResult;
-
-    return { ok: true, data: { status: nextStatus } };
+    const done = nextStatus === "verified" ? "Student verified." : "Verification rejected.";
+    return successState(notified ? done : `${done} The student could not be notified.`);
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Unable to update verification status.",
-    };
+    return failure(error);
   }
 }
 
-export async function approveVerificationAction(formData: FormData): Promise<void> {
-  const confirmed = String(formData.get("confirmed") ?? "").toLowerCase() === "on";
-  const profileId = String(formData.get("profileId") ?? "").trim();
-
-  if (!profileId) {
-    console.error("A student profile is required.");
-    return;
+export async function approveVerificationAction(
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profileId = readProfileId(formData);
+  if (!profileId) return errorState("A student profile is required.");
+  if (!isConfirmed(formData)) return errorState("Confirm the approval before submitting.");
+  if (String(formData.get("hasMatric") ?? "") !== "true") {
+    return errorState("This student has not submitted a matriculation number yet.");
   }
-
-  if (!confirmed) {
-    console.error("Confirmation is required before approval.");
-    return;
-  }
-
-  const result = await applyVerificationDecision(profileId, "verified");
-  if (!result.ok) {
-    console.error(result.error);
-  }
+  return applyVerificationDecision(profileId, "verified", null);
 }
 
-export async function rejectVerificationAction(formData: FormData): Promise<void> {
-  const confirmed = String(formData.get("confirmed") ?? "").toLowerCase() === "on";
-  const profileId = String(formData.get("profileId") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim();
+export async function rejectVerificationAction(
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profileId = readProfileId(formData);
+  if (!profileId) return errorState("A student profile is required.");
+  if (!isConfirmed(formData)) return errorState("Confirm the rejection before submitting.");
+  return applyVerificationDecision(profileId, "rejected", String(formData.get("reason") ?? ""));
+}
 
-  if (!profileId) {
-    console.error("A student profile is required.");
-    return;
-  }
+const STATUS_CHANGE_MESSAGES: Record<string, string> = {
+  suspended: "Student suspended.",
+  verified: "Student reinstated.",
+  pending: "Verification reopened for review.",
+};
 
-  if (!confirmed) {
-    console.error("Confirmation is required before rejection.");
-    return;
-  }
+/** Suspend (verified→suspended), reinstate (suspended→verified) or reopen (rejected→pending). */
+export async function changeVerificationStatusAction(
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profileId = readProfileId(formData);
+  const newStatus = String(formData.get("newStatus") ?? "");
+  if (!profileId) return errorState("A student profile is required.");
+  if (!(newStatus in STATUS_CHANGE_MESSAGES)) return errorState("Choose a valid status change.");
+  if (!isConfirmed(formData)) return errorState("Confirm the change before submitting.");
 
-  if (!reason) {
-    console.error("A rejection reason is required.");
-    return;
-  }
-
-  const result = await applyVerificationDecision(profileId, "rejected", reason);
-  if (!result.ok) {
-    console.error(result.error);
+  try {
+    await requireAdmin();
+    const supabase = await createServerSupabaseClient();
+    const reason = String(formData.get("reason") ?? "").trim() || null;
+    const { error } = await supabase.rpc("admin_change_status", {
+      p_profile_id: profileId,
+      p_new_status: newStatus,
+      p_reason: reason,
+    });
+    if (error) return errorState(rpcErrorToMessage(error));
+    revalidateVerificationViews();
+    return successState(STATUS_CHANGE_MESSAGES[newStatus]);
+  } catch (error) {
+    return failure(error);
   }
 }

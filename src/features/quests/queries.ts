@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireUserSession } from "@/lib/supabase/auth";
-import { getCurrentUserRole } from "@/lib/supabase/role";
+import { getAccessContext } from "@/lib/auth/access-server";
+import { requireStaff } from "@/lib/auth/guards";
 import type {
   LeaderboardEntry,
   LeaderboardPeriod,
@@ -34,12 +34,12 @@ export async function getActiveQuests(): Promise<Quest[]> {
  */
 export async function getQuestById(questId: string): Promise<Quest | null> {
   await requireUserSession();
-  const role = await getCurrentUserRole();
+  const access = await getAccessContext();
   const supabase = await createServerSupabaseClient();
 
   let query = supabase.from("quests").select("*").eq("id", questId);
 
-  if (role !== "admin") {
+  if (!access?.isAdmin) {
     query = query.eq("is_active", true);
   }
 
@@ -150,81 +150,77 @@ export async function getLeaderboardEntry(
  * Admin: fetch all quests (active and inactive).
  */
 export async function getAllQuestsAdmin(): Promise<Quest[]> {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
-
-  const admin = createAdminSupabaseClient();
-  const { data, error } = await admin
+  const access = await requireStaff();
+  const supabase = await createServerSupabaseClient();
+  // RLS (quests_select_manage) limits a course representative to quests they manage.
+  let query = supabase
     .from("quests")
-    .select("*")
+    .select("*, quest_audiences ( audience_kind, level_code, course_id, offering_id )")
     .order("created_at", { ascending: false });
+  if (!access.isAdmin) query = query.in("id", await managedIds(supabase, "managed_quest_ids"));
 
-  if (error) throw new Error(error.message);
+  const { data, error } = await query;
+  if (error) throw new Error("Could not load quests.");
   return (data ?? []) as Quest[];
 }
 
 /**
- * Admin: fetch all quest submissions with quest and student info.
+ * Staff: quest submissions with quest info (admins: all; course reps: their levels).
  */
 export async function getAllQuestSubmissionsAdmin(options?: {
   status?: QuestStatus;
 }): Promise<QuestSubmissionWithQuest[]> {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
-
-  const admin = createAdminSupabaseClient();
-  let query = admin
+  const access = await requireStaff();
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
     .from("quest_submissions")
     .select(`*, quests ( id, title, xp_reward )`)
     .order("created_at", { ascending: false });
 
-  if (options?.status) {
-    query = query.eq("status", options.status);
-  }
+  if (!access.isAdmin) query = query.in("quest_id", await managedIds(supabase, "managed_quest_ids"));
+  if (options?.status) query = query.eq("status", options.status);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("Could not load quest submissions.");
   return (data ?? []) as unknown as QuestSubmissionWithQuest[];
 }
 
 /**
- * Admin: count pending quest submissions.
+ * Staff: count pending quest submissions in scope.
  */
 export async function getPendingQuestSubmissionsCount(): Promise<number> {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
-
-  const admin = createAdminSupabaseClient();
-  const { count, error } = await admin
+  const access = await requireStaff();
+  const supabase = await createServerSupabaseClient();
+  let query = supabase
     .from("quest_submissions")
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
+  if (!access.isAdmin) query = query.in("quest_id", await managedIds(supabase, "managed_quest_ids"));
 
-  if (error) throw new Error(error.message);
+  const { count, error } = await query;
+  if (error) throw new Error("Could not count quest submissions.");
   return count ?? 0;
 }
 
 /**
- * Admin: count active quests.
+ * Staff: count active quests in scope.
  */
 export async function getActiveQuestsCountAdmin(): Promise<number> {
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
-    throw new Error("Administrator access required.");
-  }
+  const access = await requireStaff();
+  const supabase = await createServerSupabaseClient();
+  let query = supabase.from("quests").select("id", { count: "exact", head: true }).eq("is_active", true);
+  if (!access.isAdmin) query = query.in("id", await managedIds(supabase, "managed_quest_ids"));
 
-  const admin = createAdminSupabaseClient();
-  const { count, error } = await admin
-    .from("quests")
-    .select("id", { count: "exact", head: true })
-    .eq("is_active", true);
-
-  if (error) throw new Error(error.message);
+  const { count, error } = await query;
+  if (error) throw new Error("Could not count quests.");
   return count ?? 0;
+}
+
+async function managedIds(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  fn: "managed_quest_ids" | "managed_announcement_ids"
+): Promise<string[]> {
+  const { data, error } = await supabase.rpc(fn);
+  if (error) throw new Error("Could not load your managed items.");
+  return ((data ?? []) as unknown as string[]).filter(Boolean);
 }

@@ -184,7 +184,7 @@ export default function Home() {
               </Link>
             </div>
             <p className="mt-5 text-xs leading-5 text-muted-foreground">
-              Pilot scope: UNILAG Civil Engineering, 200 Level. BLUEPRINT is an
+              Scope: UNILAG Civil Engineering, 100 to 500 Level. BLUEPRINT is an
               independent project, not an official University of Lagos service.
             </p>
           </div>
@@ -287,7 +287,7 @@ export default function Home() {
                 id="pilot-title"
                 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl"
               >
-                Built for Civil Engineering, 200 Level.
+                Built for Civil Engineering, every level.
               </h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 The initial pilot is intended for students at the University of
@@ -300,7 +300,7 @@ export default function Home() {
               <div>
                 <p className="text-sm font-semibold">Pilot cohort</p>
                 <p className="text-xs text-muted-foreground">
-                  UNILAG Civil Engineering · 200 Level
+                  UNILAG Civil Engineering · 100–500 Level
                 </p>
               </div>
             </div>

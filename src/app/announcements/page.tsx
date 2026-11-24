@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/shared/dashboard-shell";
+import { audienceBadge } from "@/features/audiences/schema";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +11,6 @@ import type { Announcement } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-const SCOPE_LABELS: Record<Announcement["scope"], string> = {
-  all: "General",
-  department: "Department",
-  level: "200 Level",
-  course: "Course",
-};
 
 function AnnouncementCard({ announcement }: { announcement: Announcement }) {
   const date = formatTimestamp(announcement.published_at, {
@@ -30,7 +25,7 @@ function AnnouncementCard({ announcement }: { announcement: Announcement }) {
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="text-base leading-snug">{announcement.title}</CardTitle>
           <Badge variant="secondary" className="shrink-0 text-[10px]">
-            {SCOPE_LABELS[announcement.scope]}
+            {audienceBadge(announcement.announcement_audiences)}
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">{date}</p>

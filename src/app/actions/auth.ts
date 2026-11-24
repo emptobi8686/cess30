@@ -68,9 +68,5 @@ export async function updatePassword(
     };
   }
 
-  redirect(
-    `/login?message=${encodeURIComponent(
-      "Password updated successfully. Sign in with your new password."
-    )}`
-  );
+  redirect("/login?message=password_updated");
 }

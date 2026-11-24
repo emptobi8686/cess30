@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { audienceBadge } from "@/features/audiences/schema";
 import { useRouter } from "next/navigation";
 import { Edit2, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -24,12 +25,6 @@ import {
 } from "@/features/announcements/actions";
 import type { Announcement, Course } from "@/types";
 
-const SCOPE_LABELS: Record<Announcement["scope"], string> = {
-  all: "All",
-  department: "Department",
-  level: "200 Level",
-  course: "Course",
-};
 
 function TogglePublishButton({ announcement }: { announcement: Announcement }) {
   const [open, setOpen] = useState(false);
@@ -153,15 +148,14 @@ function DeleteAnnouncementButton({ announcement }: { announcement: Announcement
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button
+      <DialogTrigger
+        render={<Button
           variant="ghost"
           size="icon-sm"
           aria-label="Delete announcement"
-          onClick={() => setOpen(true)}
-        >
+          onClick={() => setOpen(true)} />}
+      >
           <Trash2 className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -194,10 +188,10 @@ function EditAnnouncementButton({
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button variant="ghost" size="icon-sm" aria-label="Edit announcement" onClick={() => setOpen(true)}>
+      <DialogTrigger
+        render={<Button variant="ghost" size="icon-sm" aria-label="Edit announcement" onClick={() => setOpen(true)} />}
+      >
           <Edit2 className="h-4 w-4 text-muted-foreground" />
-        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -227,11 +221,11 @@ export function AdminAnnouncementsTable({
     <div className="space-y-4">
       <div className="flex justify-end">
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger>
-            <Button onClick={() => setCreateOpen(true)}>
+          <DialogTrigger
+            render={<Button onClick={() => setCreateOpen(true)} />}
+          >
               <Plus className="mr-2 h-4 w-4" />
               New announcement
-            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -286,7 +280,7 @@ export function AdminAnnouncementsTable({
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="outline" className="text-[10px]">
-                        {SCOPE_LABELS[a.scope]}
+                        {audienceBadge(a.announcement_audiences)}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-xs whitespace-nowrap">

@@ -59,25 +59,19 @@ export default async function TimetablePage(props: PageProps<"/timetable">) {
         {/* Controls */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <Link href={`/timetable?view=${view}&week=${prevWeek}`}>
-              <Button variant="outline" size="icon-sm" aria-label="Previous week">
+            <Button variant="outline" size="icon-sm" aria-label="Previous week" nativeButton={false} render={<Link href={`/timetable?view=${view}&week=${prevWeek}`} />}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-            </Link>
             <span className="min-w-[180px] text-center text-sm font-medium text-foreground">
               {weekLabel}
             </span>
-            <Link href={`/timetable?view=${view}&week=${nextWeek}`}>
-              <Button variant="outline" size="icon-sm" aria-label="Next week">
+            <Button variant="outline" size="icon-sm" aria-label="Next week" nativeButton={false} render={<Link href={`/timetable?view=${view}&week=${nextWeek}`} />}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-            </Link>
             {weekOffset !== 0 && (
-              <Link href={`/timetable?view=${view}&week=0`}>
-                <Button variant="ghost" size="sm" className="text-xs">
+              <Button variant="ghost" size="sm" className="text-xs" nativeButton={false} render={<Link href={`/timetable?view=${view}&week=0`} />}>
                   This week
                 </Button>
-              </Link>
             )}
           </div>
 

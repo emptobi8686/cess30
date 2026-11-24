@@ -168,3 +168,20 @@ describe("week date calculation", () => {
     assert.equal(week.weekStart, "2025-10-06");
   });
 });
+
+import { announcementSchema } from "@/features/announcements/validation";
+
+describe("announcementSchema (BP-050)", () => {
+  const base = { title: "Mid-semester test", content: "GET209 test moved to Friday.", scope: "all", course_id: "" };
+  test("accepts 160-character titles and rejects 161", () => {
+    assert.equal(announcementSchema.safeParse({ ...base, title: "t".repeat(160) }).success, true);
+    assert.equal(announcementSchema.safeParse({ ...base, title: "t".repeat(161) }).success, false);
+  });
+  test("content is required and capped at 5000", () => {
+    assert.equal(announcementSchema.safeParse({ ...base, content: "  " }).success, false);
+    assert.equal(announcementSchema.safeParse({ ...base, content: "c".repeat(5001) }).success, false);
+  });
+  test("scope rules still apply", () => {
+    assert.equal(announcementSchema.safeParse({ ...base, scope: "course", course_id: "" }).success, false);
+  });
+});

@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_NAME } from "@/lib/supabase/client";
+import { safeNextPath } from "@/lib/auth/safe-next";
+import { formatOAuthError, type AuthMessageCode } from "@/lib/auth/messages";
+import { postSignInPath } from "@/lib/auth/redirect-origin";
 
 const ALLOWED_OTP_TYPES: EmailOtpType[] = [
   "signup",
@@ -18,55 +21,14 @@ function toOtpType(value: string | null): EmailOtpType {
     : "email";
 }
 
-/**
- * Only allow same-origin, absolute-path redirects. Rejects protocol-relative
- * URLs and absolute URLs so a crafted link cannot turn this route into an open
- * redirect.
- */
-export function safeNextPath(value: string | null, fallback: string): string {
-  if (!value) return fallback;
-  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
-    return fallback;
-  }
-  return value;
-}
-
 function isRecoveryRequest(type: string | null, next: string | null): boolean {
   return type === "recovery" || (next ?? "").includes("/reset-password");
 }
 
-function redirectWithError(request: NextRequest, path: string, message: string) {
+function redirectWithError(request: NextRequest, path: string, code: AuthMessageCode) {
   return NextResponse.redirect(
-    new URL(`${path}?error=${encodeURIComponent(message)}`, request.url)
+    new URL(`${path}?error=${code}`, request.url)
   );
-}
-
-export function formatOAuthError(
-  errorCode: string | null,
-  errorDescription: string | null
-): string {
-  const code = (errorCode ?? "").toLowerCase();
-  const desc = (errorDescription ?? "").toLowerCase();
-
-  if (
-    code === "access_denied" ||
-    desc.includes("cancelled") ||
-    desc.includes("canceled") ||
-    desc.includes("access denied")
-  ) {
-    return "Google sign-in was cancelled. Please try again when you are ready.";
-  }
-
-  if (
-    code.includes("identity_already_exists") ||
-    desc.includes("already registered") ||
-    desc.includes("multiple accounts") ||
-    desc.includes("user already exists")
-  ) {
-    return "An account with this email already exists. Please sign in with your email and password, or use your original sign-in method.";
-  }
-
-  return errorDescription ?? errorCode ?? "Authentication failed. Please try again.";
 }
 
 export async function handleAuthCallback(request: NextRequest) {
@@ -84,27 +46,18 @@ export async function handleAuthCallback(request: NextRequest) {
   const failurePath = recovery ? "/reset-password" : "/login";
 
   if (providerErrorCode || providerErrorDesc) {
-    const message = formatOAuthError(providerErrorCode, providerErrorDesc);
-    return redirectWithError(request, failurePath, message);
+    return redirectWithError(request, failurePath, formatOAuthError(providerErrorCode, providerErrorDesc));
   }
 
   if (!token_hash && !code) {
-    return redirectWithError(
-      request,
-      failurePath,
-      "We couldn't complete your sign-in. Please try again."
-    );
+    return redirectWithError(request, failurePath, "signin_failed");
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
-    return redirectWithError(
-      request,
-      failurePath,
-      "Authentication is not configured. Contact the administrator."
-    );
+    return redirectWithError(request, failurePath, "not_configured");
   }
 
   const response = NextResponse.redirect(new URL(next, request.url));
@@ -134,7 +87,7 @@ export async function handleAuthCallback(request: NextRequest) {
     // PKCE flow: Supabase appends ?code=... to the redirect URL.
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      errorMessage = formatOAuthError(null, error.message);
+      errorMessage = error.message;
     }
   } else if (token_hash) {
     // Token-hash flow used by custom email templates.
@@ -147,18 +100,28 @@ export async function handleAuthCallback(request: NextRequest) {
     }
   }
 
+  if (!errorMessage && !recovery) {
+    // First Google sign-in: send students without a matric number to the welcome step.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from("profiles").select("matric_number").eq("id", user.id).maybeSingle();
+      const destination = postSignInPath(next, profile ?? null);
+      if (destination !== next) response.headers.set("location", new URL(destination, request.url).toString());
+    }
+  }
+
   if (errorMessage) {
     // Map common messages to user-friendly text
     if (errorMessage.toLowerCase().includes("expired")) {
       if (recovery) {
-        return redirectWithError(request, failurePath, "Your password recovery link has expired. Request a new link to continue.");
+        return redirectWithError(request, failurePath, "recovery_expired");
       }
       if (type === "signup" || type === "email") {
-        return redirectWithError(request, failurePath, "Your verification link has expired. Please request a new one.");
+        return redirectWithError(request, failurePath, "verification_expired");
       }
-      return redirectWithError(request, failurePath, "We couldn't complete your sign-in. Please try again.");
+      return redirectWithError(request, failurePath, "signin_failed");
     }
-    return redirectWithError(request, failurePath, `We couldn't complete your sign-in. Please try again.`);
+    return redirectWithError(request, failurePath, "signin_failed");
   }
 
   return response;

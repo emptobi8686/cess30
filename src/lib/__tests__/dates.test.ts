@@ -187,3 +187,33 @@ describe("display formatting uses Africa/Lagos explicitly", () => {
     assert.equal(formatTimestamp("not-a-date"), "—");
   });
 });
+
+import { lagosDateTimeLocalToUtcIso } from "@/lib/dates";
+
+describe("lagosDateTimeLocalToUtcIso", () => {
+  test("converts Lagos wall-clock time to a UTC instant", () => {
+    assert.equal(lagosDateTimeLocalToUtcIso("2026-12-01T17:00"), "2026-12-01T16:00:00.000Z");
+  });
+  test("handles midnight crossing", () => {
+    assert.equal(lagosDateTimeLocalToUtcIso("2026-12-01T00:30"), "2026-11-30T23:30:00.000Z");
+  });
+  test("rejects malformed values", () => {
+    assert.throws(() => lagosDateTimeLocalToUtcIso("2026-12-01"));
+    assert.throws(() => lagosDateTimeLocalToUtcIso("not a date"));
+  });
+});
+
+import { utcIsoToLagosDateTimeLocal } from "@/lib/dates";
+
+describe("utcIsoToLagosDateTimeLocal", () => {
+  test("renders a UTC instant as Lagos datetime-local", () => {
+    assert.equal(utcIsoToLagosDateTimeLocal("2026-12-01T16:00:00.000Z"), "2026-12-01T17:00");
+  });
+  test("round-trips with lagosDateTimeLocalToUtcIso", () => {
+    assert.equal(utcIsoToLagosDateTimeLocal(lagosDateTimeLocalToUtcIso("2026-03-09T08:45")), "2026-03-09T08:45");
+  });
+  test("returns empty string for null or invalid input", () => {
+    assert.equal(utcIsoToLagosDateTimeLocal(null), "");
+    assert.equal(utcIsoToLagosDateTimeLocal("nonsense"), "");
+  });
+});

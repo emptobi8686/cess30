@@ -90,12 +90,8 @@ export default function UpdatePasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
-            <Link href="/reset-password">
-              <Button>Request a new link</Button>
-            </Link>
-            <Link href="/login">
-              <Button variant="outline">Back to login</Button>
-            </Link>
+            <Button nativeButton={false} render={<Link href="/reset-password" />}>Request a new link</Button>
+            <Button variant="outline" nativeButton={false} render={<Link href="/login" />}>Back to login</Button>
           </CardContent>
         </Card>
       </main>

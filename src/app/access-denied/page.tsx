@@ -12,7 +12,7 @@ export default function AccessDeniedPage() {
           </div>
           <CardTitle className="text-2xl">Access denied</CardTitle>
           <CardDescription>
-            This area requires a valid authenticated session. Configure Supabase credentials or login with a verified account.
+            You don&apos;t have permission to open this page. If you think you should, sign in with the right account or contact your course representative.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

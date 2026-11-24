@@ -119,3 +119,65 @@ describe("quest submission validation", () => {
     assert.ok(errors.some((e) => e.includes("Notes")));
   });
 });
+
+import { questUpsertSchema } from "@/features/quests/validation";
+
+describe("questUpsertSchema", () => {
+  test("missing is_active means inactive (unchecked checkbox)", () => {
+    const r = questUpsertSchema.safeParse({
+      title: "Lab 1",
+      description: "Submit your lab write-up",
+      xp_reward: "50",
+    });
+    assert.equal(r.success, true);
+    assert.equal(r.success && r.data.is_active, false);
+  });
+  test("checkbox 'on' means active and XP is coerced", () => {
+    const r = questUpsertSchema.safeParse({
+      title: "Lab 1",
+      description: "Submit your lab write-up",
+      xp_reward: "50",
+      is_active: "on",
+    });
+    assert.equal(r.success && r.data.is_active, true);
+    assert.equal(r.success && r.data.xp_reward, 50);
+  });
+  test("due date is converted from Lagos time", () => {
+    const r = questUpsertSchema.safeParse({
+      title: "Lab 1",
+      description: "Submit your lab write-up",
+      xp_reward: "50",
+      due_date: "2026-12-01T17:00",
+    });
+    assert.equal(r.success && r.data.due_date, "2026-12-01T16:00:00.000Z");
+  });
+  test("empty due date means no deadline", () => {
+    const r = questUpsertSchema.safeParse({
+      title: "Lab 1",
+      description: "Submit your lab write-up",
+      xp_reward: "50",
+      due_date: "",
+    });
+    assert.equal(r.success && r.data.due_date, null);
+  });
+  test("rejects out-of-range XP and short text", () => {
+    assert.equal(questUpsertSchema.safeParse({ title: "Lab", description: "Ten chars!", xp_reward: "0" }).success, false);
+    assert.equal(questUpsertSchema.safeParse({ title: "Lab", description: "Ten chars!", xp_reward: "abc" }).success, false);
+    assert.equal(questUpsertSchema.safeParse({ title: "La", description: "Ten chars!", xp_reward: "5" }).success, false);
+  });
+});
+
+describe("questUpsertSchema level audience (decision 0004)", () => {
+  const base = { title: "Lab 1", description: "Submit your lab write-up", xp_reward: "50" };
+  test("empty level means department-wide (null)", () => {
+    const r = questUpsertSchema.safeParse({ ...base, level_code: "" });
+    assert.equal(r.success && r.data.level_code, null);
+  });
+  test("a known level is kept", () => {
+    const r = questUpsertSchema.safeParse({ ...base, level_code: "300" });
+    assert.equal(r.success && r.data.level_code, "300");
+  });
+  test("an unknown level is rejected", () => {
+    assert.equal(questUpsertSchema.safeParse({ ...base, level_code: "700" }).success, false);
+  });
+});

@@ -1,17 +1,15 @@
+import { requireAdminPage } from "@/lib/auth/access-server";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Search, XCircle } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  approveVerificationAction,
-  rejectVerificationAction,
-} from "@/features/verification/actions";
+import { ReviewForms } from "./_components/review-forms";
 import { getVerificationQueue } from "@/features/verification/queries";
 import { getVerificationStatusLabel } from "@/lib/verification";
+import { formatTimestamp } from "@/lib/dates";
 
 function toString(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -25,14 +23,26 @@ export default async function AdminVerificationsPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
 }) {
+  await requireAdminPage();
   const params = await Promise.resolve(searchParams ?? {});
   const activeStatus = toString(params.status) || "pending";
   const query = toString(params.q) || "";
+  const page = Math.max(1, Number.parseInt(toString(params.page) || "1", 10) || 1);
 
   const queue = await getVerificationQueue({
     status: activeStatus,
     search: query,
+    page,
   });
+
+  const pageHref = (target: number) => {
+    const search = new URLSearchParams();
+    if (activeStatus !== "all") search.set("status", activeStatus);
+    if (query) search.set("q", query);
+    if (target > 1) search.set("page", String(target));
+    const qs = search.toString();
+    return qs ? `/admin/verifications?${qs}` : "/admin/verifications";
+  };
 
   return (
     <AdminShell currentLabel="Verifications" displayName={undefined}>
@@ -44,12 +54,10 @@ export default async function AdminVerificationsPage({
             </p>
             <h2 className="mt-1 text-2xl font-semibold">Student matriculation review</h2>
           </div>
-          <Link href="/admin">
-            <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" nativeButton={false} render={<Link href="/admin" />}>
               <ArrowLeft className="h-4 w-4" />
               Back to overview
             </Button>
-          </Link>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -101,17 +109,19 @@ export default async function AdminVerificationsPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
-              {(["pending", "verified", "rejected", "all"] as const).map((status) => {
+              {(["pending", "verified", "rejected", "suspended", "all"] as const).map((status) => {
                 const isActive = activeStatus === status;
-                const href = status === "all" ? "/admin/verifications" : `/admin/verifications?status=${status}`;
-                const queryString = query ? `&q=${encodeURIComponent(query)}` : "";
+                const filterParams = new URLSearchParams();
+                if (status !== "all") filterParams.set("status", status);
+                if (query) filterParams.set("q", query);
+                const filterHref = filterParams.size
+                  ? `/admin/verifications?${filterParams.toString()}`
+                  : "/admin/verifications";
 
                 return (
-                  <Link key={status} href={`${href}${queryString}`}>
-                    <Button type="button" variant={isActive ? "default" : "outline"} size="sm" className="capitalize">
+                  <Button key={status} variant={isActive ? "default" : "outline"} size="sm" className="capitalize" nativeButton={false} render={<Link href={filterHref} />}>
                       {status === "all" ? "All" : getVerificationStatusLabel(status)}
                     </Button>
-                  </Link>
                 );
               })}
             </div>
@@ -150,46 +160,35 @@ export default async function AdminVerificationsPage({
                           </Badge>
                         </td>
                         <td className="px-2 py-3 text-muted-foreground">
-                          {new Date(submission.created_at).toLocaleDateString()} 
+                          {formatTimestamp(submission.created_at)} 
                         </td>
                         <td className="px-2 py-3">
-                          <div className="flex flex-col gap-3">
-                            <form action={approveVerificationAction} className="space-y-2">
-                              <input type="hidden" name="profileId" value={submission.id} />
-                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <input type="checkbox" name="confirmed" required />
-                                Confirm approval
-                              </label>
-                              <Button type="submit" size="sm" className="gap-2">
-                                <CheckCircle2 className="h-4 w-4" />
-                                Approve
-                              </Button>
-                            </form>
-
-                            <form action={rejectVerificationAction} className="space-y-2">
-                              <input type="hidden" name="profileId" value={submission.id} />
-                              <Textarea
-                                name="reason"
-                                rows={2}
-                                placeholder="Reason for rejection (minimum 12 characters)"
-                                required
-                              />
-                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <input type="checkbox" name="confirmed" required />
-                                Confirm rejection
-                              </label>
-                              <Button type="submit" variant="destructive" size="sm" className="gap-2">
-                                <XCircle className="h-4 w-4" />
-                                Reject
-                              </Button>
-                            </form>
-                          </div>
+                          <ReviewForms
+                            profileId={submission.id}
+                            status={submission.verification_status}
+                            hasMatric={Boolean(submission.matric_number)}
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            )}
+            {(queue.page > 1 || queue.hasNextPage) && (
+              <nav aria-label="Verification pages" className="flex items-center justify-between pt-2 text-sm">
+                {queue.page > 1 ? (
+                  <Link href={pageHref(queue.page - 1)} className="text-primary hover:underline">
+                    ← Previous
+                  </Link>
+                ) : <span />}
+                <span className="text-muted-foreground">Page {queue.page}</span>
+                {queue.hasNextPage ? (
+                  <Link href={pageHref(queue.page + 1)} className="text-primary hover:underline">
+                    Next →
+                  </Link>
+                ) : <span />}
+              </nav>
             )}
           </CardContent>
         </Card>

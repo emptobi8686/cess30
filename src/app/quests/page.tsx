@@ -8,32 +8,15 @@ import {
   getMyQuestSubmissions,
   getUserXpSummary,
 } from "@/features/quests/queries";
-import { submitQuestAction } from "@/features/quests/actions";
+import { formatTimestamp } from "@/lib/dates";
+import { SubmitEvidenceDialog } from "./_components/submit-evidence-dialog";
+import { CancelSubmissionButton } from "./_components/cancel-submission-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Trophy, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "cn";
 
 export const dynamic = "force-dynamic";
-
-async function handleSubmitQuest(formData: FormData): Promise<void> {
-  const result = await submitQuestAction(formData);
-  if (!result.ok) {
-    console.error(result.error);
-  }
-}
 
 function statusBadge(status: string) {
   const variants: Record<string, string> = {
@@ -59,7 +42,7 @@ export default async function QuestsPage() {
   ]);
 
   const submissionByQuest = new Map(
-    (submissions ?? []).map((s) => [s.quest_id, s])
+    (submissions ?? []).filter((s) => s.status !== "cancelled").map((s) => [s.quest_id, s])
   );
 
   const { data: profile } = await supabase
@@ -148,7 +131,7 @@ export default async function QuestsPage() {
                             "text-muted-foreground",
                             isOverdue ? "text-rose-600" : ""
                           )}>
-                            {new Date(quest.due_date).toLocaleDateString()}
+                            {formatTimestamp(quest.due_date, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
                       )}
@@ -160,6 +143,9 @@ export default async function QuestsPage() {
                           Your submission:
                         </span>
                         {statusBadge(submission!.status)}
+                        {submission!.status === "pending" ? (
+                          <CancelSubmissionButton submissionId={submission!.id} />
+                        ) : null}
                         {submission!.status === "rejected" && submission!.rejection_reason && (
                           <p className="text-xs text-rose-600 mt-1">
                             {submission!.rejection_reason}
@@ -167,57 +153,11 @@ export default async function QuestsPage() {
                         )}
                       </div>
                     ) : (
-                      <Dialog>
-                        <DialogTrigger>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isOverdue}
-                            className="w-full"
-                          >
-                            {isOverdue ? "Expired" : "Submit evidence"}
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Submit evidence for &quot;{quest.title}&quot;</DialogTitle>
-                            <DialogDescription>
-                              Provide a link to your evidence of completion.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <form action={handleSubmitQuest} className="space-y-4 mt-4">
-                            <input type="hidden" name="quest_id" value={quest.id} />
-                            <div className="space-y-2">
-                              <label className="text-xs font-medium text-muted-foreground">
-                                Evidence URL
-                              </label>
-                              <Input
-                                name="evidence_url"
-                                placeholder="https://..."
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-xs font-medium text-muted-foreground">
-                                Notes (optional)
-                              </label>
-                              <Textarea
-                                name="notes"
-                                rows={2}
-                                placeholder="Any additional context for reviewers..."
-                              />
-                            </div>
-                            <DialogFooter>
-                              <Button type="button" variant="outline" size="sm" className="ml-auto">
-                                Cancel
-                              </Button>
-                              <Button type="submit" size="sm" disabled={isOverdue}>
-                                Submit
-                              </Button>
-                            </DialogFooter>
-                          </form>
-                        </DialogContent>
-                      </Dialog>
+                      <SubmitEvidenceDialog
+                        questId={quest.id}
+                        questTitle={quest.title}
+                        disabled={isOverdue}
+                      />
                     )}
                   </CardContent>
                 </Card>

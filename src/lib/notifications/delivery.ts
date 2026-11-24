@@ -7,7 +7,7 @@ import {
   getReminderMinutes,
   lagosLocalTimeToUtc,
 } from "@/lib/notifications/time";
-import { getAnnouncementRecipients } from "@/lib/notifications/targeting";
+import { eligibleNotificationProfiles, type TargetingProfile } from "@/lib/notifications/rows";
 import type {
   NotificationPreferences,
   NotificationSourceType,
@@ -17,12 +17,6 @@ import type {
 type QueryResult<T> = {
   data: T[] | null;
   error: { message: string } | null;
-};
-
-type ProfileRow = {
-  id: string;
-  department: string;
-  level: string;
 };
 
 type PreferenceRow = Pick<
@@ -38,16 +32,13 @@ type PreferenceRow = Pick<
   | "quiet_hours_end"
 >;
 
-type LectureRow = {
-  id: string;
-  lecture_date: string;
-  start_time: string;
-  is_cancelled: boolean;
-  courses: Array<{
-    course_code: string;
-    department: string;
-    level: string;
-  }> | null;
+type LectureCandidate = {
+  user_id: string;
+  lecture_id: string;
+  course_code: string;
+  starts_at: string;
+  reminder_minutes: number;
+  push_enabled: boolean;
 };
 
 type StudySessionRow = {
@@ -75,11 +66,11 @@ async function fetchAll<T>(
 
 async function loadTargetingData() {
   const admin = createAdminSupabaseClient();
-  const [profiles, preferences, adminRoles] = await Promise.all([
-    fetchAll<ProfileRow>((from, to) =>
+  const [profiles, preferences, roleRows] = await Promise.all([
+    fetchAll<TargetingProfile>((from, to) =>
       admin
         .from("profiles")
-        .select("id, department, level")
+        .select("id, department, level, verification_status")
         .order("id")
         .range(from, to)
     ),
@@ -92,20 +83,19 @@ async function loadTargetingData() {
         .order("user_id")
         .range(from, to)
     ),
-    fetchAll<{ user_id: string }>((from, to) =>
+    fetchAll<{ user_id: string; role: string }>((from, to) =>
       admin
         .from("user_roles")
-        .select("user_id")
-        .eq("role", "admin")
+        .select("user_id, role")
         .order("user_id")
+        .order("role")
         .range(from, to)
     ),
   ]);
-  const adminUserIds = new Set(adminRoles.map((role) => role.user_id));
 
   return {
     admin,
-    profiles: profiles.filter((profile) => !adminUserIds.has(profile.id)),
+    profiles: eligibleNotificationProfiles(profiles, roleRows),
     preferences: new Map(preferences.map((preference) => [preference.user_id, preference])),
   };
 }
@@ -167,59 +157,34 @@ async function insertNotifications(rows: ReturnType<typeof buildReminderRow>[]) 
   return insertedCount;
 }
 
+/**
+ * Queues announcement notifications for the announcement's audiences (E4/E5). Recipients
+ * are computed in SQL (announcement_recipients): verified students matching any audience
+ * with announcement notifications on.
+ */
 export async function enqueueAnnouncementNotifications(
-  announcement: {
-    id: string;
-    title: string;
-    scope: "all" | "department" | "level" | "course";
-    course_id: string | null;
-  },
+  announcement: { id: string; title: string },
   sendPush: boolean
 ) {
-  const { admin, profiles, preferences } = await loadTargetingData();
-  let courseAudience: { department: string; level: string } | null = null;
-  if (announcement.scope === "course") {
-    if (!announcement.course_id) {
-      throw new Error("Course-scoped announcements require a course.");
-    }
-    const { data: course, error } = await admin
-      .from("courses")
-      .select("department, level")
-      .eq("id", announcement.course_id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!course) throw new Error("The announcement course could not be found.");
-    courseAudience = course;
-  }
-  const eligibleProfiles = getAnnouncementRecipients(
-    profiles,
-    announcement.scope,
-    courseAudience
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin.rpc("announcement_recipients", { p_announcement_id: announcement.id });
+  if (error) throw new Error(error.message);
+  const recipients = (data ?? []) as Array<{ user_id: string; push_enabled: boolean }>;
+
+  const rows = recipients.map((recipient) =>
+    buildReminderRow({
+      userId: recipient.user_id,
+      notificationType: "announcement",
+      sourceType: "announcement",
+      sourceId: announcement.id,
+      title: announcement.title.slice(0, 160),
+      message: "A new academic announcement is available.",
+      actionUrl: "/announcements",
+      dedupeKey: `announcement:${announcement.id}:${recipient.user_id}`,
+      pushEnabled: sendPush && recipient.push_enabled,
+      expiresAt: null,
+    })
   );
-
-  const rows = eligibleProfiles.flatMap((profile) => {
-    const preference = preferences.get(profile.id);
-    if (!preference?.announcement_notifications_enabled) return [];
-
-    const shouldPush = sendPush && preference.push_enabled;
-
-    return [
-      {
-        ...buildReminderRow({
-          userId: profile.id,
-          notificationType: "announcement",
-          sourceType: "announcement",
-          sourceId: announcement.id,
-          title: announcement.title.slice(0, 160),
-          message: "A new academic announcement is available.",
-          actionUrl: "/announcements",
-          dedupeKey: `announcement:${announcement.id}:${profile.id}`,
-          pushEnabled: shouldPush,
-          expiresAt: null,
-        }),
-      },
-    ];
-  });
 
   return insertNotifications(rows);
 }
@@ -228,20 +193,19 @@ export async function createDueReminderNotifications() {
   const admin = createAdminSupabaseClient();
   const { date: today } = getLagosDateAndTime(new Date());
   const now = new Date();
-  const lastLectureDate = addCalendarDays(today, 1);
   const lastStudyDate = addCalendarDays(today, 2);
-  const [targetingData, lectures, studies] = await Promise.all([
+  const [targetingData, lectureCandidates, studies] = await Promise.all([
     loadTargetingData(),
-    fetchAll<LectureRow>((from, to) =>
-      admin
-        .from("lecture_sessions")
-        .select("id, lecture_date, start_time, is_cancelled, courses(course_code, department, level)")
-        .eq("is_cancelled", false)
-        .gte("lecture_date", today)
-        .lte("lecture_date", lastLectureDate)
-        .order("id")
-        .range(from, to)
-    ),
+    // Enrolment-based recipients (carry-over included, dropped excluded), computed in SQL.
+    admin
+      .rpc("lecture_reminder_candidates", {
+        p_from: now.toISOString(),
+        p_to: new Date(now.getTime() + 2 * 24 * 60 * 60_000).toISOString(),
+      })
+      .then(({ data, error }) => {
+        if (error) throw new Error(error.message);
+        return (data ?? []) as LectureCandidate[];
+      }),
     fetchAll<StudySessionRow>((from, to) =>
       admin
         .from("study_sessions")
@@ -258,44 +222,26 @@ export async function createDueReminderNotifications() {
   const profileIds = new Set(profiles.map((profile) => profile.id));
   const rows: ReturnType<typeof buildReminderRow>[] = [];
 
-  for (const lecture of lectures) {
-    const course = lecture.courses?.[0];
-    if (lecture.is_cancelled || !course) continue;
-
-    const startAt = lagosLocalTimeToUtc(lecture.lecture_date, lecture.start_time);
+  for (const candidate of lectureCandidates) {
+    const startAt = new Date(candidate.starts_at);
     if (startAt <= now) continue;
+    const reminderAt = new Date(startAt.getTime() - candidate.reminder_minutes * 60_000);
+    if (reminderAt > now) continue;
 
-    for (const profile of profiles) {
-      if (
-        profile.department !== course.department ||
-        profile.level !== course.level
-      ) {
-        continue;
-      }
-
-      const preference = preferences.get(profile.id);
-      if (!preference?.lecture_reminders_enabled) continue;
-
-      const reminderAt = new Date(
-        startAt.getTime() - preference.lecture_reminder_minutes * 60_000
-      );
-      if (reminderAt > now) continue;
-
-      rows.push(
-        buildReminderRow({
-          userId: profile.id,
-          notificationType: "lecture_reminder",
-          sourceType: "lecture",
-          sourceId: lecture.id,
-          title: "Lecture reminder",
-          message: `An upcoming ${course.course_code} lecture starts soon.`,
-          actionUrl: "/timetable",
-          dedupeKey: `lecture:${lecture.id}:${profile.id}:${preference.lecture_reminder_minutes}`,
-          pushEnabled: preference.push_enabled,
-          expiresAt: startAt,
-        })
-      );
-    }
+    rows.push(
+      buildReminderRow({
+        userId: candidate.user_id,
+        notificationType: "lecture_reminder",
+        sourceType: "lecture",
+        sourceId: candidate.lecture_id,
+        title: "Lecture reminder",
+        message: `An upcoming ${candidate.course_code} lecture starts soon.`,
+        actionUrl: "/timetable",
+        dedupeKey: `lecture:${candidate.lecture_id}:${candidate.user_id}:${candidate.reminder_minutes}`,
+        pushEnabled: candidate.push_enabled,
+        expiresAt: startAt,
+      })
+    );
   }
 
   for (const session of studies) {
