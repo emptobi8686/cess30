@@ -1,6 +1,6 @@
 # Remote Migration Ledger
 
-**Status: CAPTURED 2026-11-23/24. Remote is at 038.**
+**Status: CAPTURED 2026-11-23/24. Remote is at 039.**
 
 The remote Supabase project was not reachable from the implementation session
 (the Supabase connector listed no projects), so the ledger below has not been captured yet.
@@ -24,6 +24,7 @@ Paste the full Local/Remote table below, with date and operator name.
 | 2026-11-23 | Claude session (Supabase connector, owner-approved) | Before: remote at `013` (001–013 applied; 014/018/019 never applied, as predicted). Data: 1 profile, 7 courses, 1 role, no announcements/lectures/quests. |
 | 2026-11-23 | same | Applied `014`–`038` in order, one transaction each, no errors. Versions renumbered from connector timestamps to `014`…`038` so `supabase migration list` matches the repo. |
 | 2026-11-23 | same | Post-checks: every public table has RLS; no legacy admin-only policies left on courses/offerings/lectures/announcements/quests; all courses and profiles have `department_id`; backfill queued 1 review item (`profile_no_matric`). No academic session exists yet, so no placements were created. |
+| 2026-11-24 | same | Applied `039_library` (version renumbered to `039`). Checks: `library` bucket private, 0 storage policies on it, all `library_*` tables have RLS, `search_library` runs. |
 
 ## Static evidence (recorded 2026-11-23)
 
