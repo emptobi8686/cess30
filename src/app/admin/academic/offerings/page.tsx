@@ -85,8 +85,8 @@ export default async function OfferingsPage(props: PageProps<"/admin/academic/of
                 {offerings.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No offerings yet for this semester.</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
+                  <div className="table-scroll" role="region" aria-label="Course offerings" tabIndex={0}>
+                    <table className="text-left text-sm w-full min-w-[600px]">
                       <thead>
                         <tr className="border-b text-muted-foreground">
                           <th scope="col" className="px-2 py-2 font-medium">Level</th>

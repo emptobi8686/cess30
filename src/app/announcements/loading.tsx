@@ -1,11 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { StudentShellLoading } from "@/components/shared/shell-loading";
 
 export default function Loading() {
-  return (
-    <div className="space-y-4 p-6" aria-busy="true" aria-label="Loading">
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-24 w-full" />
-    </div>
-  );
+  return <StudentShellLoading rows={4} />;
 }

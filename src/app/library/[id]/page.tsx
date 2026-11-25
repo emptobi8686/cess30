@@ -38,7 +38,7 @@ export default async function LibraryResourcePage(props: PageProps<"/library/[id
           <BookmarkToggle resourceId={r.id} initial={bookmarked} />
           <ReportForm resourceId={r.id} />
         </div>
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
           <div className="lg:col-span-2">
             {isPdf ? (
               <iframe title={`Preview of ${r.title}`} src={`/api/library/${r.id}/file?mode=preview`}

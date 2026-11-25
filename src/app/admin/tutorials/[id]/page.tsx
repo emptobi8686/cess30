@@ -23,7 +23,7 @@ export default async function AdminTutorialPage(props: PageProps<"/admin/tutoria
       <div className="space-y-6">
         <PageHeader eyebrow={`Admin · Tutorials · ${t.status.replace("_", " ")}`} title={t.title}
           description={`Review: ${t.review_status.replace("_", " ")}${reviewerName ? ` by ${reviewerName}` : ""}${t.reviewed_at ? ` on ${formatTimestamp(t.reviewed_at, { day: "numeric", month: "short", year: "numeric" })}` : ""}`} />
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
           <Card className="lg:col-span-2">
             <CardHeader className="pb-3"><CardTitle className="text-base">Details</CardTitle></CardHeader>
             <CardContent><TutorialForm tutorial={t} courses={courses} /></CardContent>

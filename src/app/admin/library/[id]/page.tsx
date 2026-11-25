@@ -30,7 +30,7 @@ export default async function LibraryResourceAdminPage(props: PageProps<"/admin/
       <div className="space-y-6">
         <PageHeader eyebrow={`Admin · Library · ${resource.status}`} title={resource.title}
           description={resource.removal_reason ? `Removed: ${resource.removal_reason}` : "Upload the file, check the audience, then publish."} />
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
           <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-base">File</CardTitle></CardHeader>

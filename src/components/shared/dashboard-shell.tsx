@@ -31,13 +31,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { siteConfig } from "@/config/site";
 import { signOut } from "@/app/actions/auth";
 import { cn } from "cn";
 import { NotificationsMenu } from "@/components/shared/notifications/notifications-menu";
+import { BottomNav, MobileNavSheet, NavLink, type ShellNavItem } from "@/components/shared/shell-nav";
 
-const navItems = [
+const navItems: ShellNavItem[] = [
   { label: "Overview", href: "/dashboard", icon: LayoutGrid },
   { label: "Timetable", href: "/timetable", icon: CalendarDays },
   { label: "Study Planner", href: "/study-planner", icon: NotebookPen },
@@ -48,6 +48,11 @@ const navItems = [
   ...(FEATURES.tutorials ? [{ label: "Tutorials", href: "/tutorials", icon: PlayCircle }] : []),
   { label: "Settings", href: "/settings", icon: Settings },
 ];
+
+/** The menu label for a student path ("/quests/x" → "Quests"), for loading screens. */
+export function studentLabelFor(pathname: string): string {
+  return navItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))?.label ?? "";
+}
 
 function SidebarNav({ currentLabel, academic }: { currentLabel: string; academic?: ShellAcademic }) {
   const cohort = cohortLabel(academic);
@@ -63,25 +68,10 @@ function SidebarNav({ currentLabel, academic }: { currentLabel: string; academic
         </div>
       </div>
 
-      <nav className="mt-6 space-y-2">
-        {navItems.map(({ label, href, icon: Icon }) => {
-          const active = label === currentLabel;
-          return (
-            <Link key={label} href={href} className="block">
-              <div
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{label}</span>
-              </div>
-            </Link>
-          );
-        })}
+      <nav aria-label="Main" className="mt-6 space-y-1">
+        {navItems.map((item) => (
+          <NavLink key={item.label} item={item} active={item.label === currentLabel} />
+        ))}
       </nav>
 
       <div className="mt-8 rounded-2xl border border-dashed border-border bg-muted/30 p-4">
@@ -93,54 +83,38 @@ function SidebarNav({ currentLabel, academic }: { currentLabel: string; academic
   );
 }
 
-function MobileNav({ currentLabel }: { currentLabel: string }) {
-  return (
-    <Sheet>
-      <SheetTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="lg:hidden"
-            aria-label="Open navigation menu"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        }
-      />
-      <SheetContent side="left" className="w-[85vw] max-w-sm px-3 py-5">
-        <SheetHeader className="mb-4 px-2">
-          <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 overflow-hidden rounded-full border border-primary/20 bg-white shadow-sm">
-              <Image src="/images/blueprint-logo.png" alt="BLUEPRINT logo" width={40} height={40} className="object-cover" priority />
-            </div>
-            <SheetTitle className="text-left text-base font-semibold">{siteConfig.name}</SheetTitle>
-          </div>
-        </SheetHeader>
+/** Bottom bar destinations on phones and tablets; everything else sits under "More". */
+const quickItems = navItems.filter((item) => ["Overview", "Timetable", "Quests", "Library"].includes(item.label));
 
-        <nav className="space-y-2 px-2">
-          {navItems.map(({ label, href, icon: Icon }) => {
-            const active = label === currentLabel;
-            return (
-              <Link key={label} href={href} className="block">
-                <div
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{label}</span>
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
-      </SheetContent>
-    </Sheet>
+function StudentBottomNav({ currentLabel }: { currentLabel: string }) {
+  const inMore = !quickItems.some((item) => item.label === currentLabel);
+  return (
+    <BottomNav
+      items={quickItems}
+      currentLabel={currentLabel}
+      more={
+        <MobileNavSheet
+          items={navItems}
+          currentLabel={currentLabel}
+          trigger={
+            <button
+              type="button"
+              aria-label="More pages"
+              className={cn(
+                "group flex h-16 w-full flex-col items-center justify-center gap-1 text-[11px] font-medium",
+                "transition-colors duration-(--duration-fast) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                inMore ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("flex h-7 w-12 items-center justify-center rounded-full", inMore && "bg-primary/12")}>
+                <Menu className="h-5 w-5" />
+              </span>
+              More
+            </button>
+          }
+        />
+      }
+    />
   );
 }
 
@@ -180,7 +154,6 @@ function ProfileMenu({
           )}
           <div className="hidden text-left sm:block">
             <p className="text-sm font-medium text-foreground">{displayName ?? "Student"}</p>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Pilot</p>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </DropdownMenuTrigger>
@@ -223,18 +196,23 @@ export function DashboardShell({
 }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
       <div className="mx-auto flex max-w-[1600px]">
         <SidebarNav currentLabel={currentLabel} academic={academic} />
 
-        <main className="flex min-h-screen flex-1 flex-col">
+        <main className="flex min-h-screen min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-sm">
-            <div className="flex h-18 items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-3">
-                <MobileNav currentLabel={currentLabel} />
-                <div>
-                  <p className="text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Blueprint</p>
-                  <h1 className="text-lg font-semibold text-foreground md:text-xl">{currentLabel}</h1>
+            <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-primary/20 bg-white lg:hidden">
+                  <Image src="/images/blueprint-logo.png" alt="" width={32} height={32} className="object-cover" />
                 </div>
+                <h1 className="truncate text-lg font-semibold text-foreground md:text-xl">{currentLabel}</h1>
               </div>
 
               <div className="flex items-center gap-2 sm:gap-3">
@@ -244,8 +222,16 @@ export function DashboardShell({
             </div>
           </header>
 
-          <div className="flex-1 px-4 py-5 sm:px-6 lg:px-8">{children}</div>
+          <div
+            key={currentLabel}
+            id="main-content"
+            tabIndex={-1}
+            className="w-full max-w-(--container-content) flex-1 animate-page-enter focus:outline-none px-4 pt-5 pb-24 sm:px-6 lg:px-8 lg:pb-8"
+          >
+            {children}
+          </div>
         </main>
+        <StudentBottomNav currentLabel={currentLabel} />
       </div>
     </div>
   );

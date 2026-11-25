@@ -64,9 +64,9 @@ export function UploadFile({ resourceId }: { resourceId: string }) {
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={`file-${resourceId}`}>File (PDF, PowerPoint, Word, PNG, JPEG or text; up to 25 MB)</Label>
+      <Label className="leading-snug" htmlFor={`file-${resourceId}`}>File (PDF, PowerPoint, Word, PNG, JPEG or text; up to 25 MB)</Label>
       <div className="flex flex-wrap items-center gap-2">
-        <input id={`file-${resourceId}`} ref={input} type="file" accept={ACCEPT} disabled={pending} className="text-sm" />
+        <input id={`file-${resourceId}`} ref={input} type="file" accept={ACCEPT} disabled={pending} className="min-w-0 max-w-full text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium" />
         <Button type="button" onClick={upload} disabled={pending}>
           {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
           {pending ? stage ?? "Working…" : "Upload"}

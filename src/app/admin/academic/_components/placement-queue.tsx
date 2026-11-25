@@ -17,8 +17,8 @@ export function PlacementQueue({ rows, readOnly }: { rows: PlacementQueueRow[]; 
 
   return (
     <form action={action} className="space-y-3">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
+      <div className="table-scroll" role="region" aria-label="Level requests" tabIndex={0}>
+        <table className="text-left text-sm w-full min-w-[520px]">
           <thead>
             <tr className="border-b text-muted-foreground">
               {!readOnly ? <th scope="col" className="px-2 py-2"><span className="sr-only">Select</span></th> : null}

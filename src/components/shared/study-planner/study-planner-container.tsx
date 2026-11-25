@@ -232,46 +232,51 @@ export function StudyPlannerContainer({
       {/* Top action bar: View mode switcher & Plan button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         {/* View Switcher */}
-        <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl border border-border w-fit">
+        <div role="group" aria-label="Planner view" className="grid w-full grid-cols-4 gap-1 rounded-xl border border-border bg-muted/60 p-1 sm:flex sm:w-fit sm:items-center">
           <Button
             type="button"
             variant={viewMode === "daily" ? "default" : "ghost"}
+            aria-pressed={viewMode === "daily"}
             size="sm"
             onClick={() => setViewMode("daily")}
-            className="text-xs h-8 gap-1.5"
+            className="h-8 gap-1.5 px-2 text-xs sm:px-2.5"
           >
-            <CalendarDays className="h-3.5 w-3.5" />
+            <CalendarDays className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
             Daily
           </Button>
           <Button
             type="button"
             variant={viewMode === "weekly" ? "default" : "ghost"}
+            aria-pressed={viewMode === "weekly"}
             size="sm"
             onClick={() => setViewMode("weekly")}
-            className="text-xs h-8 gap-1.5"
+            className="h-8 gap-1.5 px-2 text-xs sm:px-2.5"
           >
-            <CalendarRange className="h-3.5 w-3.5" />
+            <CalendarRange className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
             Weekly
           </Button>
           <Button
             type="button"
             variant={viewMode === "monthly" ? "default" : "ghost"}
+            aria-pressed={viewMode === "monthly"}
             size="sm"
             onClick={() => setViewMode("monthly")}
-            className="text-xs h-8 gap-1.5"
+            className="h-8 gap-1.5 px-2 text-xs sm:px-2.5"
           >
-            <CalendarIcon className="h-3.5 w-3.5" />
+            <CalendarIcon className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
             Monthly
           </Button>
           <Button
             type="button"
             variant={viewMode === "status" ? "default" : "ghost"}
+            aria-pressed={viewMode === "status"}
             size="sm"
             onClick={() => setViewMode("status")}
-            className="text-xs h-8 gap-1.5"
+            className="h-8 gap-1.5 px-2 text-xs sm:px-2.5"
           >
-            <ListFilter className="h-3.5 w-3.5" />
-            Status lists
+            <ListFilter className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
+            <span className="sm:hidden">Status</span>
+            <span className="hidden sm:inline">Status lists</span>
           </Button>
         </div>
 

@@ -29,7 +29,7 @@ export default async function TutorialPage(props: PageProps<"/tutorials/[id]">) 
     <DashboardShell currentLabel="Tutorials">
       <div className="space-y-6">
         <PageHeader eyebrow={`Tutorials · ${t.topic}`} title={t.title} description={t.description ?? ""} />
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
           <div className="space-y-3 lg:col-span-2">
             {embed ? <VideoEmbed embedUrl={embed} title={t.title} /> : null}
             <Button variant={embed ? "ghost" : "default"} nativeButton={false}

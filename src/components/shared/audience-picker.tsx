@@ -83,7 +83,7 @@ export function AudiencePicker({ name, defaultValue = [], id = "audience" }: { n
             return (
               <li key={label} className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-1 text-xs">
                 {label}
-                <button type="button" aria-label={`Remove ${label}`} onClick={() => setRows(rows.filter((_, i) => i !== index))} className="rounded-full p-0.5 hover:bg-muted">
+                <button type="button" aria-label={`Remove ${label}`} onClick={() => setRows(rows.filter((_, i) => i !== index))} className="flex items-center justify-center rounded-full p-0.5 transition-colors duration-(--duration-fast) hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:-my-1.5 pointer-coarse:p-2">
                   <X className="h-3 w-3" />
                 </button>
               </li>

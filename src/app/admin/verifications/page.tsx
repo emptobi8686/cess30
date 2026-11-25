@@ -119,7 +119,7 @@ export default async function AdminVerificationsPage({
                   : "/admin/verifications";
 
                 return (
-                  <Button key={status} variant={isActive ? "default" : "outline"} size="sm" className="capitalize" nativeButton={false} render={<Link href={filterHref} />}>
+                  <Button key={status} variant={isActive ? "default" : "outline"} aria-current={isActive ? "page" : undefined} size="sm" className="capitalize" nativeButton={false} render={<Link href={filterHref} />}>
                       {status === "all" ? "All" : getVerificationStatusLabel(status)}
                     </Button>
                 );
@@ -131,8 +131,8 @@ export default async function AdminVerificationsPage({
                 No verification submissions match the selected filter.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
+              <div className="table-scroll" role="region" aria-label="Student verifications" tabIndex={0}>
+                <table className="text-left text-sm w-full min-w-[760px]">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">
                       <th className="px-2 py-3 font-medium">Student</th>

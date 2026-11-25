@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -50,8 +51,9 @@ export default async function AdminCoursesPage() {
               <p className="text-sm text-muted-foreground">No courses yet.</p>
             ) : (
               courses.map((course) => (
-                <details key={course.id} className="rounded-lg border border-border/60 p-3 open:bg-muted/20">
-                  <summary className="flex cursor-pointer flex-wrap items-center gap-3">
+                <details key={course.id} className="disclosure rounded-lg border border-border/60 p-3 transition-colors duration-(--duration-base) open:bg-muted/20">
+                  <summary className="flex min-h-8 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <ChevronRight className="disclosure-chevron h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                     <span className="font-mono text-sm font-semibold">{course.course_code}</span>
                     <span className="text-sm">{course.course_title}</span>
                     <span className="text-xs text-muted-foreground">

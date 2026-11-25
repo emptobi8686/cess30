@@ -66,7 +66,7 @@ export function StudySessionCard({
             onClick={onToggleComplete}
             disabled={isLoading}
             aria-label={session.completed ? "Mark incomplete" : "Mark completed"}
-            className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
+            className="-m-1.5 mt-0 flex shrink-0 items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors duration-(--duration-fast) hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary pointer-coarse:-m-2.5 pointer-coarse:p-2.5"
           >
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

@@ -30,10 +30,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { siteConfig } from "@/config/site";
 import { signOut } from "@/app/actions/auth";
-import { cn } from "cn";
+import { MobileNavSheet, NavLink } from "@/components/shared/shell-nav";
 import { NotificationsMenu } from "@/components/shared/notifications/notifications-menu";
 import { visibleAdminNav } from "@/components/shared/admin-nav";
 import { useStaffAccess } from "@/components/shared/staff-access";
@@ -70,31 +69,16 @@ function AdminSidebarNav({ currentLabel }: { currentLabel: string }) {
         </div>
       </div>
 
-      <nav className="mt-6 flex-1 space-y-1.5">
-        {adminNavItems.map(({ label, href, icon: Icon }) => {
-          const active = label === currentLabel;
-          return (
-            <Link key={label} href={href} className="block">
-              <div
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{label}</span>
-              </div>
-            </Link>
-          );
-        })}
+      <nav aria-label="Admin" className="mt-6 flex-1 space-y-1">
+        {adminNavItems.map((item) => (
+          <NavLink key={item.label} item={item} active={item.label === currentLabel} />
+        ))}
       </nav>
 
       <div className="mt-6 border-t border-border/80 pt-4">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Users className="h-4 w-4" />
           Student view
@@ -107,53 +91,25 @@ function AdminSidebarNav({ currentLabel }: { currentLabel: string }) {
 function AdminMobileNav({ currentLabel }: { currentLabel: string }) {
   const adminNavItems = useAdminNavItems();
   return (
-    <Sheet>
-      <SheetTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="lg:hidden"
-            aria-label="Open admin navigation"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        }
-      />
-      <SheetContent side="left" className="w-[85vw] max-w-xs px-3 py-5">
-        <SheetHeader className="mb-4 px-2">
-          <div className="flex items-center gap-3">
-            <div className="relative h-9 w-9 overflow-hidden rounded-full border border-primary/20 bg-white shadow-sm">
-              <Image src="/images/blueprint-logo.png" alt="BLUEPRINT logo" width={36} height={36} className="object-cover" priority />
-            </div>
-            <SheetTitle className="text-left text-sm font-semibold">
-              {siteConfig.name} — Admin
-            </SheetTitle>
-          </div>
-        </SheetHeader>
-        <nav className="space-y-1.5 px-2">
-          {adminNavItems.map(({ label, href, icon: Icon }) => {
-            const active = label === currentLabel;
-            return (
-              <Link key={label} href={href} className="block">
-                <div className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-                  active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}>
-                  <Icon className="h-4 w-4" />
-                  <span>{label}</span>
-                </div>
-              </Link>
-            );
-          })}
-          <Link href="/dashboard" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
-            <Users className="h-4 w-4" />
-            Student view
-          </Link>
-        </nav>
-      </SheetContent>
-    </Sheet>
+    <MobileNavSheet
+      items={adminNavItems}
+      currentLabel={currentLabel}
+      title={`${siteConfig.name} admin`}
+      trigger={
+        <Button type="button" variant="ghost" size="icon-sm" className="lg:hidden" aria-label="Open admin navigation">
+          <Menu className="h-4 w-4" />
+        </Button>
+      }
+      footer={
+        <Link
+          href="/dashboard"
+          className="flex min-h-10 items-center gap-3 rounded-lg border-t border-border/80 px-3 pt-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <Users className="h-4 w-4" />
+          Student view
+        </Link>
+      }
+    />
   );
 }
 
@@ -176,7 +132,7 @@ function AdminProfileMenu({ displayName }: { displayName?: string }) {
           </div>
           <div className="hidden text-left sm:block">
             <p className="text-sm font-medium text-foreground">{displayName ?? "Admin"}</p>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Administrator</p>
+            <p className="text-xs text-muted-foreground">Staff</p>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </DropdownMenuTrigger>
@@ -210,19 +166,20 @@ export function AdminShell({
 }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
       <div className="mx-auto flex max-w-[1600px]">
         <AdminSidebarNav currentLabel={currentLabel} />
-        <main className="flex min-h-screen flex-1 flex-col">
+        <main className="flex min-h-screen min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-sm">
-            <div className="flex h-16 items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-3">
+            <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+              <div className="flex min-w-0 items-center gap-3">
                 <AdminMobileNav currentLabel={currentLabel} />
-                <div>
-                  <p className="text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    Admin
-                  </p>
-                  <h1 className="text-lg font-semibold text-foreground md:text-xl">{currentLabel}</h1>
-                </div>
+                <h1 className="truncate text-lg font-semibold text-foreground md:text-xl">{currentLabel}</h1>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
                 <NotificationsMenu />
@@ -230,7 +187,11 @@ export function AdminShell({
               </div>
             </div>
           </header>
-          <div className="flex-1 px-4 py-5 sm:px-6 lg:px-8">{children}</div>
+          <div key={currentLabel} id="main-content"
+            tabIndex={-1}
+            className="w-full max-w-(--container-content) flex-1 animate-page-enter focus:outline-none px-4 py-5 sm:px-6 lg:px-8">
+            {children}
+          </div>
         </main>
       </div>
     </div>

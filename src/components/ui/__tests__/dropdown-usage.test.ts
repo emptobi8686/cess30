@@ -60,6 +60,7 @@ describe("Base UI Button rendering links", () => {
       for (const match of source.matchAll(/<Button\b[^]*?render=\{<Link/g)) {
         const tag = match[0];
         if (tag.includes("<Button", 1)) continue; // matched across elements
+        if (/\/>|<\//.test(tag)) continue; // the Button closed before this render prop: another element's
         assert.ok(tag.includes("nativeButton={false}"), `${file}: Button renders a Link without nativeButton={false}`);
       }
     }

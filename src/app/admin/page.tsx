@@ -92,7 +92,7 @@ export default async function AdminOverviewPage() {
         ) : null}
 
         {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label="Courses"
             value={String(stats.courses)}
@@ -184,8 +184,8 @@ export default async function AdminOverviewPage() {
 
         {/* Quick links */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Link href="/admin/timetable" className="group block">
-            <Card className="border-border/80 bg-card shadow-none transition-colors group-hover:border-primary/40">
+          <Link href="/admin/timetable" className="group block rounded-xl focus-visible:outline-none">
+            <Card className="h-full bg-card shadow-none transition-[box-shadow] duration-(--duration-fast) group-hover:ring-primary/40 group-focus-visible:ring-2 group-focus-visible:ring-ring">
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                   <CalendarDays className="h-5 w-5" />
@@ -197,8 +197,8 @@ export default async function AdminOverviewPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/admin/announcements" className="group block">
-            <Card className="border-border/80 bg-card shadow-none transition-colors group-hover:border-primary/40">
+          <Link href="/admin/announcements" className="group block rounded-xl focus-visible:outline-none">
+            <Card className="h-full bg-card shadow-none transition-[box-shadow] duration-(--duration-fast) group-hover:ring-primary/40 group-focus-visible:ring-2 group-focus-visible:ring-ring">
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                   <Megaphone className="h-5 w-5" />
@@ -210,8 +210,8 @@ export default async function AdminOverviewPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/admin/verifications" className="group block">
-            <Card className="border-border/80 bg-card shadow-none transition-colors group-hover:border-primary/40">
+          <Link href="/admin/verifications" className="group block rounded-xl focus-visible:outline-none">
+            <Card className="h-full bg-card shadow-none transition-[box-shadow] duration-(--duration-fast) group-hover:ring-primary/40 group-focus-visible:ring-2 group-focus-visible:ring-ring">
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                   <ShieldCheck className="h-5 w-5" />
@@ -223,8 +223,8 @@ export default async function AdminOverviewPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/admin/quests" className="group block">
-            <Card className="border-border/80 bg-card shadow-none transition-colors group-hover:border-primary/40">
+          <Link href="/admin/quests" className="group block rounded-xl focus-visible:outline-none">
+            <Card className="h-full bg-card shadow-none transition-[box-shadow] duration-(--duration-fast) group-hover:ring-primary/40 group-focus-visible:ring-2 group-focus-visible:ring-ring">
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                   <Trophy className="h-5 w-5" />
@@ -236,8 +236,8 @@ export default async function AdminOverviewPage() {
               </CardContent>
             </Card>
           </Link>
-          <Link href="/admin/courses" className="group block">
-            <Card className="border-border/80 bg-card shadow-none transition-colors group-hover:border-primary/40">
+          <Link href="/admin/courses" className="group block rounded-xl focus-visible:outline-none">
+            <Card className="h-full bg-card shadow-none transition-[box-shadow] duration-(--duration-fast) group-hover:ring-primary/40 group-focus-visible:ring-2 group-focus-visible:ring-ring">
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                   <BookOpen className="h-5 w-5" />

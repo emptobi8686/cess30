@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Paperclip } from "lucide-react";
+import { ArrowLeft, ChevronRight, ExternalLink, Paperclip } from "lucide-react";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,7 +93,7 @@ export default async function AdminQuestsPage({
             </Button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label="Active quests"
             value={String(activeCount ?? 0)}
@@ -141,9 +141,10 @@ export default async function AdminQuestsPage({
                 {quests.map((quest) => (
                   <details
                     key={quest.id}
-                    className="rounded-lg border border-border/60 p-3 open:bg-muted/20"
+                    className="disclosure rounded-lg border border-border/60 p-3 transition-colors duration-(--duration-base) open:bg-muted/20"
                   >
-                    <summary className="flex cursor-pointer flex-wrap items-center gap-3">
+                    <summary className="flex min-h-8 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <ChevronRight className="disclosure-chevron h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                       <span className="font-medium text-foreground">{quest.title}</span>
                       <span className="text-xs text-muted-foreground">+{quest.xp_reward} XP</span>
                       <span className="text-xs text-muted-foreground">
@@ -178,20 +179,20 @@ export default async function AdminQuestsPage({
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle className="text-base">Submission review</CardTitle>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant={activeStatus === "all" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests" />}>
+              <nav aria-label="Filter submissions" className="flex flex-wrap gap-2">
+                <Button variant={activeStatus === "all" ? "default" : "outline"} aria-current={activeStatus === "all" ? "page" : undefined} size="sm" nativeButton={false} render={<Link href="/admin/quests" />}>
                     All
                   </Button>
-                <Button variant={activeStatus === "pending" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=pending" />}>
+                <Button variant={activeStatus === "pending" ? "default" : "outline"} aria-current={activeStatus === "pending" ? "page" : undefined} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=pending" />}>
                     Pending
                   </Button>
-                <Button variant={activeStatus === "approved" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=approved" />}>
+                <Button variant={activeStatus === "approved" ? "default" : "outline"} aria-current={activeStatus === "approved" ? "page" : undefined} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=approved" />}>
                     Approved
                   </Button>
-                <Button variant={activeStatus === "rejected" ? "default" : "outline"} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=rejected" />}>
+                <Button variant={activeStatus === "rejected" ? "default" : "outline"} aria-current={activeStatus === "rejected" ? "page" : undefined} size="sm" nativeButton={false} render={<Link href="/admin/quests?status=rejected" />}>
                     Rejected
                   </Button>
-              </div>
+              </nav>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -200,8 +201,8 @@ export default async function AdminQuestsPage({
                 No submissions match the selected filter.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
+              <div className="table-scroll" role="region" aria-label="Quest submissions" tabIndex={0}>
+                <table className="text-left text-sm w-full min-w-[760px]">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">
                       <th className="px-2 py-3 font-medium">Student</th>

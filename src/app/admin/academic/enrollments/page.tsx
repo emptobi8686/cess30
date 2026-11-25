@@ -58,7 +58,7 @@ export default async function EnrollmentsPage(props: PageProps<"/admin/academic/
               </CardContent>
             </Card>
 
-            <div className="grid gap-6 lg:grid-cols-3">
+            <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
               <Card className="lg:col-span-1">
                 <CardHeader className="pb-3"><CardTitle className="text-base">Offerings</CardTitle></CardHeader>
                 <CardContent>

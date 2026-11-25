@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 /** Shared body for route error boundaries: friendly copy, retry, and a digest for support. */
@@ -24,7 +25,12 @@ export function RouteError({
         Please try again. If the problem continues, contact your course representative
         {error.digest ? ` and quote reference ${error.digest}` : ""}.
       </p>
-      <Button onClick={reset}>Try again</Button>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button onClick={reset}>Try again</Button>
+        <Button variant="outline" nativeButton={false} render={<Link href="/dashboard" />}>
+          Go to dashboard
+        </Button>
+      </div>
     </main>
   );
 }

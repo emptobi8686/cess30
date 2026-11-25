@@ -108,7 +108,7 @@ export default async function LeaderboardPage(props: PageProps<"/leaderboard">) 
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="table-scroll" role="region" aria-label="Rankings" tabIndex={0}>
                 <table className="min-w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">

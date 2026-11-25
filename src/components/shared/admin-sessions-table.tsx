@@ -238,8 +238,8 @@ export function AdminSessionsTable({
               {sessions.length} session{sessions.length !== 1 ? "s" : ""}
             </CardTitle>
           </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="table-scroll" role="region" aria-label="Lecture sessions" tabIndex={0}>
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-3">Course</th>

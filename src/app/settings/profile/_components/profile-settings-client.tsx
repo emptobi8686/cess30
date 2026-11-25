@@ -89,7 +89,7 @@ export function ProfileSettingsClient({
           rejectionReason={profile.verification_rejection_reason}
         />
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
           {/* Profile picture card */}
           <Card className="lg:col-span-1">
             <CardHeader>

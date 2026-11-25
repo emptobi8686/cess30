@@ -12,7 +12,9 @@
     "db:test": "supabase test db supabase/tests/database",
     "db:test:local": "scripts/db-test-local.sh",
     "e2e": "playwright test",
-    "db:types": "supabase gen types typescript --local > src/types/database.ts"
+    "db:types": "supabase gen types typescript --local > src/types/database.ts",
+    "ui:mock": "node scripts/ui-harness/mock-supabase.mjs",
+    "ui:check": "node scripts/ui-harness/check-viewports.mjs http://localhost:3100 ui-harness-out"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
