@@ -11,6 +11,23 @@ import {
   type SubmitQuestInput,
 } from "./validation";
 import { parseAudienceField } from "@/features/audiences/schema";
+import {
+  EVIDENCE_BUCKET,
+  EVIDENCE_MAX_BYTES,
+  checkEvidenceUpload,
+  evidencePathOwner,
+  isEvidencePath,
+  planEvidencePath,
+  sniffEvidence,
+} from "./evidence-file";
+import type { ActionResult } from "@/types";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function serviceClient() {
+  const { createAdminSupabaseClient } = await import("@/lib/supabase/admin");
+  return createAdminSupabaseClient();
+}
 
 export type { SubmitQuestInput };
 
@@ -120,6 +137,48 @@ export async function updateQuestAction(
   }
 }
 
+/**
+ * Step 1 of a file upload: the server picks the path inside the student's own folder and
+ * hands the browser a one-time signed upload URL for the private bucket.
+ */
+export async function startEvidenceUploadAction(input: {
+  questId: string;
+  type: string;
+  size: number;
+}): Promise<ActionResult<{ path: string; token: string }>> {
+  const access = await guardStudentAction("full");
+  if (!access.ok) return { ok: false, error: access.error };
+  if (!UUID.test(input.questId)) return { ok: false, error: "Quest not found." };
+  const check = checkEvidenceUpload({ type: input.type, size: input.size });
+  if (!check.ok) return { ok: false, error: check.error };
+
+  try {
+    const path = planEvidencePath(access.ctx.userId, check.ext);
+    const service = await serviceClient();
+    const { data, error } = await service.storage.from(EVIDENCE_BUCKET).createSignedUploadUrl(path);
+    if (error || !data) {
+      console.error("Evidence upload could not be signed.", { name: error?.name });
+      return { ok: false, error: "The upload could not be started. Please try again." };
+    }
+    return { ok: true, data: { path, token: data.token } };
+  } catch (error) {
+    return { ok: false, error: accessErrorMessage(error, "The upload could not be started.") };
+  }
+}
+
+/** Checks the stored bytes are really a photo or PDF under the size limit; removes it if not. */
+async function verifyStoredEvidence(path: string): Promise<string | null> {
+  const service = await serviceClient();
+  const { data, error } = await service.storage.from(EVIDENCE_BUCKET).download(path);
+  if (error || !data) return "The uploaded file could not be found. Please upload it again.";
+  const buffer = new Uint8Array(await data.arrayBuffer());
+  if (buffer.byteLength === 0 || buffer.byteLength > EVIDENCE_MAX_BYTES || !sniffEvidence(buffer.subarray(0, 32))) {
+    await service.storage.from(EVIDENCE_BUCKET).remove([path]);
+    return "That file is not a valid photo or PDF. Please upload a different file.";
+  }
+  return null;
+}
+
 export async function submitQuestAction(
   _previous: ActionState,
   formData: FormData
@@ -130,14 +189,27 @@ export async function submitQuestAction(
   const input: SubmitQuestInput = {
     quest_id: String(formData.get("quest_id") ?? "").trim(),
     evidence_url: String(formData.get("evidence_url") ?? "").trim(),
+    evidence_path: String(formData.get("evidence_path") ?? "").trim() || null,
     notes: String(formData.get("notes") ?? "").trim() || null,
   };
 
   const errors = validateSubmitQuestInput(input);
   if (errors.length > 0) return errorState(errors.join(" "));
 
-  const evidenceUrl = toSafeExternalHref(input.evidence_url);
-  if (!evidenceUrl) return errorState("Evidence must be an https:// link.");
+  let evidenceUrl: string | null = null;
+  if (input.evidence_url) {
+    evidenceUrl = toSafeExternalHref(input.evidence_url);
+    if (!evidenceUrl) return errorState("Evidence must be an https:// link.");
+  }
+
+  const evidencePath = input.evidence_path ?? null;
+  if (evidencePath) {
+    if (!isEvidencePath(evidencePath) || evidencePathOwner(evidencePath) !== access.ctx.userId) {
+      return errorState("The uploaded file could not be found. Please upload it again.");
+    }
+    const fileError = await verifyStoredEvidence(evidencePath);
+    if (fileError) return errorState(fileError);
+  }
 
   try {
     const supabase = await createServerSupabaseClient();
@@ -171,6 +243,7 @@ export async function submitQuestAction(
       quest_id: input.quest_id,
       student_id: access.ctx.userId,
       evidence_url: evidenceUrl,
+      evidence_path: evidencePath,
       notes: input.notes,
     });
 
@@ -249,5 +322,52 @@ export async function reviewQuestSubmissionAction(
     return successState(newStatus === "approved" ? "Submission approved and XP awarded." : "Submission rejected.");
   } catch (error) {
     return errorState(accessErrorMessage(error, "The review could not be saved."))
+  }
+}
+
+/**
+ * Deletes a quest the caller manages. Its submissions go with it (database cascade) and
+ * their uploaded files are removed; XP students already earned stays on the leaderboard.
+ */
+export async function deleteQuestAction(
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    await requireStaff();
+    const questId = String(formData.get("questId") ?? "").trim();
+    if (!UUID.test(questId)) return errorState("A valid quest is required.");
+
+    const supabase = await createServerSupabaseClient();
+    const { data: files } = await supabase
+      .from("quest_submissions")
+      .select("evidence_path")
+      .eq("quest_id", questId)
+      .not("evidence_path", "is", null);
+
+    const { data, error } = await supabase.from("quests").delete().eq("id", questId).select("id, title");
+    if (error) {
+      console.error("Quest delete failed.", { code: error.code });
+      return errorState("The quest could not be deleted. Please try again.");
+    }
+    if (!data || data.length === 0) return errorState("Quest not found, or you cannot delete it.");
+
+    const paths = (files ?? []).map((f) => f.evidence_path).filter((p): p is string => Boolean(p));
+    if (paths.length > 0) {
+      try {
+        const service = await serviceClient();
+        await service.storage.from(EVIDENCE_BUCKET).remove(paths);
+      } catch (cleanupError) {
+        console.error("Evidence cleanup failed after quest delete.", {
+          name: cleanupError instanceof Error ? cleanupError.name : "unknown",
+        });
+      }
+    }
+
+    quietRevalidateQuests();
+    revalidatePath("/leaderboard");
+    return successState(`Quest "${data[0].title}" deleted.`);
+  } catch (error) {
+    return errorState(accessErrorMessage(error, "The quest could not be deleted."));
   }
 }

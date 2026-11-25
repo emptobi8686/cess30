@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Paperclip } from "lucide-react";
 import { AdminShell } from "@/components/shared/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { formatTimestamp } from "@/lib/dates";
 import { toSafeExternalHref } from "@/lib/safe-links";
 import { QuestCreateForm } from "./_components/quest-create-form";
 import { QuestEditForm } from "./_components/quest-edit-form";
+import { DeleteQuestButton } from "./_components/delete-quest-button";
 import { SubmissionReview } from "./_components/submission-review";
 import {
   getAllQuestsAdmin,
@@ -67,6 +68,8 @@ export default async function AdminQuestsPage({
     .from("profiles")
     .select("id, full_name")
     .in("id", studentIds);
+  const submissionCountByQuest = new Map<string, number>();
+  for (const s of submissions) submissionCountByQuest.set(s.quest_id, (submissionCountByQuest.get(s.quest_id) ?? 0) + 1);
   const studentNameById = new Map(
     (studentProfiles ?? []).map((p: { id: string; full_name: string | null }) => [
       p.id,
@@ -154,8 +157,15 @@ export default async function AdminQuestsPage({
                         <Badge variant="destructive" className="text-[10px]">Inactive</Badge>
                       )}
                     </summary>
-                    <div className="mt-3">
+                    <div className="mt-3 space-y-4">
                       <QuestEditForm quest={quest} />
+                      <div className="flex justify-end border-t border-border/60 pt-3">
+                        <DeleteQuestButton
+                          questId={quest.id}
+                          questTitle={quest.title}
+                          submissionCount={activeStatus === "all" ? submissionCountByQuest.get(quest.id) ?? 0 : null}
+                        />
+                      </div>
                     </div>
                   </details>
                 ))}
@@ -217,7 +227,19 @@ export default async function AdminQuestsPage({
                             <div className="font-medium">{quest?.title ?? "Unknown quest"}</div>
                           </td>
                           <td className="px-2 py-3 max-w-xs">
-                            {(() => {
+                            {submission.evidence_path ? (
+                              <a
+                                href={`/api/quests/evidence/${submission.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mb-1 inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+                              >
+                                <Paperclip className="h-3 w-3" aria-hidden />
+                                View uploaded file
+                                <span className="sr-only">(opens in a new tab)</span>
+                              </a>
+                            ) : null}
+                            {submission.evidence_url ? (() => {
                               const href = toSafeExternalHref(submission.evidence_url);
                               return href ? (
                                 <a
@@ -233,7 +255,7 @@ export default async function AdminQuestsPage({
                               ) : (
                                 <span className="text-xs text-muted-foreground">Unsafe link hidden</span>
                               );
-                            })()}
+                            })() : null}
                             {submission.notes ? (
                               <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{submission.notes}</p>
                             ) : null}

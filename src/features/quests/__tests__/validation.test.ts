@@ -101,13 +101,24 @@ describe("quest submission validation", () => {
     assert.ok(errors.some((e) => e.includes("quest")));
   });
 
-  test("rejects a missing evidence URL", () => {
+  test("rejects a submission with neither a link nor a file", () => {
     const errors = validateSubmitQuestInput({
       quest_id: "11111111-1111-4111-8111-111111111111",
       evidence_url: "",
+      evidence_path: null,
       notes: null,
     });
-    assert.ok(errors.some((e) => e.includes("Evidence URL")));
+    assert.ok(errors.some((e) => e.includes("link or upload a file")));
+  });
+
+  test("accepts an uploaded file without a link", () => {
+    const errors = validateSubmitQuestInput({
+      quest_id: "11111111-1111-4111-8111-111111111111",
+      evidence_url: "",
+      evidence_path: "11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.jpg",
+      notes: null,
+    });
+    assert.deepEqual(errors, []);
   });
 
   test("rejects notes that are too long", () => {
