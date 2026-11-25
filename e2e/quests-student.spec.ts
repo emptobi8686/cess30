@@ -23,7 +23,7 @@ test.describe("student quest submission and cancellation (BP-009, BP-029)", () =
     await page.goto("/quests");
     const card = page.locator("div", { hasText: title }).filter({ has: page.getByRole("button", { name: "Submit evidence" }) }).last();
     await card.getByRole("button", { name: "Submit evidence" }).click();
-    await page.getByLabel("Evidence link").fill("https://drive.google.com/e2e-evidence");
+    await page.getByLabel("Or paste a link").fill("https://drive.google.com/e2e-evidence");
     await page.getByRole("button", { name: "Submit", exact: true }).click();
     await expect(page.getByRole("status").first()).toContainText("Evidence submitted");
 

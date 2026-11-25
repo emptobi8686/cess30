@@ -12,7 +12,10 @@ export type CreateQuestInput = {
 
 export type SubmitQuestInput = {
   quest_id: string;
+  /** Optional when a file was uploaded. */
   evidence_url: string;
+  /** Object path of an uploaded photo or PDF, if any. */
+  evidence_path?: string | null;
   notes: string | null;
 };
 
@@ -52,8 +55,11 @@ export function validateSubmitQuestInput(input: SubmitQuestInput): string[] {
   }
 
   const evidenceUrl = (input.evidence_url ?? "").trim();
-  if (evidenceUrl.length < 1 || evidenceUrl.length > 500) {
-    errors.push("Evidence URL must be between 1 and 500 characters.");
+  const evidencePath = (input.evidence_path ?? "").trim();
+  if (evidenceUrl.length === 0 && evidencePath.length === 0) {
+    errors.push("Add a link or upload a file as evidence.");
+  } else if (evidenceUrl.length > 500) {
+    errors.push("Evidence URL must not exceed 500 characters.");
   }
 
   if (input.notes !== null && input.notes !== undefined && input.notes.trim().length > 1000) {

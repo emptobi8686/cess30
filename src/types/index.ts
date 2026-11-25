@@ -192,7 +192,8 @@ export type QuestSubmission = {
   id: string;
   quest_id: string;
   student_id: string;
-  evidence_url: string;
+  evidence_url: string | null;
+  evidence_path: string | null;
   notes: string | null;
   status: QuestStatus;
   reviewed_by: string | null;
