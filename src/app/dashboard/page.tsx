@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { TodaySessionsList } from "@/components/shared/timetable-grid";
 import { VerificationBanner } from "@/components/shared/verification-banner";
+import { XpBeam } from "@/components/shared/xp-beam";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { requireUserSession } from "@/lib/supabase/auth";
@@ -139,12 +140,11 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">My XP</CardTitle>
-                <CardDescription>From approved quests.</CardDescription>
+                <CardTitle className="text-base">My rank</CardTitle>
+                <CardDescription>Earn XP from approved quests to climb.</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-semibold" data-testid="my-xp">{myXp?.total_xp ?? 0}</p>
-                <p className="text-xs text-muted-foreground">{myXp?.quests_completed ?? 0} quests completed</p>
+                <XpBeam totalXp={myXp?.total_xp ?? 0} questsCompleted={myXp?.quests_completed ?? 0} />
               </CardContent>
             </Card>
           </div>

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { Stamp } from "@/components/shared/stamp";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +13,9 @@ import { FormStatus } from "./form-status";
 export function SubmissionReview({ submissionId }: { submissionId: string }) {
   const [approveState, approve, approving] = useActionState(reviewQuestSubmissionAction, IDLE_ACTION_STATE);
   const [rejectState, reject, rejecting] = useActionState(reviewQuestSubmissionAction, IDLE_ACTION_STATE);
+
+  if (approveState.status === "success") return <Stamp label="Approved" detail={approveState.message} />;
+  if (rejectState.status === "success") return <Stamp label="Returned" detail={rejectState.message} tone="muted" />;
 
   return (
     <div className="flex flex-col gap-3">

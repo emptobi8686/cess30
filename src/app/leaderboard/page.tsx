@@ -3,9 +3,12 @@ import { Medal } from "lucide-react";
 import { DashboardShell } from "@/components/shared/dashboard-shell";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { LeaderboardPodium } from "@/components/shared/leaderboard-podium";
+import { XpBeam } from "@/components/shared/xp-beam";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getLeaderboard, getUserXpSummary } from "@/features/quests/queries";
 import { LEADERBOARD_PERIODS, parseLeaderboardPeriod } from "@/features/quests/leaderboard";
+import { engineerRank } from "@/features/quests/ranks";
 import { requireUserSession } from "@/lib/supabase/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -76,19 +79,12 @@ export default async function LeaderboardPage(props: PageProps<"/leaderboard">) 
           <CardHeader>
             <CardTitle className="text-base">Your progress</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-6 text-sm">
+          <CardContent className="grid gap-6 text-sm sm:grid-cols-[auto_1fr] sm:items-center">
             <div>
-              <p className="text-xs text-muted-foreground">Rank ({periodLabel.toLowerCase()})</p>
-              <p className="text-2xl font-semibold">{myEntry ? `#${myEntry.rank}` : "—"}</p>
+              <p className="text-xs text-muted-foreground">Position ({periodLabel.toLowerCase()})</p>
+              <p className="text-3xl font-semibold tabular-nums">{myEntry ? `#${myEntry.rank}` : "—"}</p>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total XP (all time)</p>
-              <p className="text-2xl font-semibold">{mySummary?.total_xp ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Quests completed</p>
-              <p className="text-2xl font-semibold">{mySummary?.quests_completed ?? 0}</p>
-            </div>
+            <XpBeam totalXp={mySummary?.total_xp ?? 0} questsCompleted={mySummary?.quests_completed ?? 0} />
           </CardContent>
         </Card>
 
@@ -102,6 +98,8 @@ export default async function LeaderboardPage(props: PageProps<"/leaderboard">) 
             description="The leaderboard fills up when quest submissions are approved. Complete a quest, and you will appear here once a rep or admin approves it."
           />
         ) : (
+          <>
+          <LeaderboardPodium entries={entries} currentUserId={user.id} showTitles={period === "all-time"} />
           <Card className="border-border/80 bg-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -116,6 +114,9 @@ export default async function LeaderboardPage(props: PageProps<"/leaderboard">) 
                     <tr className="border-b border-border text-muted-foreground">
                       <th scope="col" className="px-2 py-3 font-medium">#</th>
                       <th scope="col" className="px-2 py-3 font-medium">Student</th>
+                      {period === "all-time" ? (
+                        <th scope="col" className="hidden px-2 py-3 font-medium sm:table-cell">Title</th>
+                      ) : null}
                       <th scope="col" className="px-2 py-3 text-right font-medium">XP</th>
                       <th scope="col" className="px-2 py-3 text-right font-medium">Quests</th>
                     </tr>
@@ -130,6 +131,9 @@ export default async function LeaderboardPage(props: PageProps<"/leaderboard">) 
                             {entry.full_name}
                             {isMe ? <span className="ml-2 text-xs text-primary">(you)</span> : null}
                           </td>
+                          {period === "all-time" ? (
+                            <td className="hidden px-2 py-3 text-muted-foreground sm:table-cell">{engineerRank(entry.total_xp).title}</td>
+                          ) : null}
                           <td className="px-2 py-3 text-right font-semibold">{entry.total_xp}</td>
                           <td className="px-2 py-3 text-right">{entry.quests_completed}</td>
                         </tr>
@@ -140,6 +144,7 @@ export default async function LeaderboardPage(props: PageProps<"/leaderboard">) 
               </div>
             </CardContent>
           </Card>
+          </>
         )}
       </div>
     </DashboardShell>

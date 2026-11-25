@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import { Paperclip, X } from "lucide-react";
+import { Stamp } from "@/components/shared/stamp";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,11 +59,7 @@ export function SubmitEvidenceDialog({
   const fileInput = useRef<HTMLInputElement>(null);
 
   if (state.status === "success") {
-    return (
-      <p role="status" className="text-xs text-primary">
-        {state.message}
-      </p>
-    );
+    return <Stamp label="Submitted" detail={state.message} />;
   }
 
   function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
